@@ -2,6 +2,7 @@
 .env.*
 *.env
 apis.env
+!.env.example
 
 .vscode/
 
