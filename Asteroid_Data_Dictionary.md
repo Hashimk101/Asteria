@@ -41,19 +41,30 @@ Each item in `todays_asteroids_data` is one asteroid dictionary with the fields 
 
 | Field | Description |
 | --- | --- |
-| `vectors` | Hourly Earth-relative state vectors across the seven-day feed window. |
+| `vectors` | Hourly Sun-centered state vectors across the seven-day feed window. |
 | `vectors[].jd` | Julian Date of the vector timestamp. |
 | `vectors[].datetime` | Horizons vector timestamp in TDB. |
-| `vectors[].x_km` | Earth-relative X position in kilometers. |
-| `vectors[].y_km` | Earth-relative Y position in kilometers. |
-| `vectors[].z_km` | Earth-relative Z position in kilometers. |
-| `vectors[].vx_kms` | Earth-relative X velocity in kilometers per second. |
-| `vectors[].vy_kms` | Earth-relative Y velocity in kilometers per second. |
-| `vectors[].vz_kms` | Earth-relative Z velocity in kilometers per second. |
-| `vectors[].distance_from_earth_km` | Earth-to-asteroid distance calculated from the vector position in kilometers. |
-| `minimum_distance` | Closest sampled Horizons vector in the requested window. |
-| `minimum_distance.datetime` | Timestamp of the closest sampled vector. |
-| `minimum_distance.distance_km` | Earth distance of the closest sampled vector in kilometers. |
+| `vectors[].x_km` | Sun-centered X position in kilometers. |
+| `vectors[].y_km` | Sun-centered Y position in kilometers. |
+| `vectors[].z_km` | Sun-centered Z position in kilometers. |
+| `vectors[].vx_kms` | Sun-centered X velocity in kilometers per second. |
+| `vectors[].vy_kms` | Sun-centered Y velocity in kilometers per second. |
+| `vectors[].vz_kms` | Sun-centered Z velocity in kilometers per second. |
+
+## Planet trajectory fields
+
+| Field | Description |
+| --- | --- |
+| `planets_data` | Dictionary of Sun-centered trajectory vectors keyed by planet name. |
+| `planets_data.Mercury` | Hourly Sun-centered vector list for Mercury. |
+| `planets_data.Venus` | Hourly Sun-centered vector list for Venus. |
+| `planets_data.Earth` | Hourly Sun-centered vector list for Earth. |
+| `planets_data.Mars` | Hourly Sun-centered vector list for Mars. |
+| `planets_data.Jupiter` | Hourly Sun-centered vector list for Jupiter. |
+| `planets_data.Saturn` | Hourly Sun-centered vector list for Saturn. |
+| `planets_data.Uranus` | Hourly Sun-centered vector list for Uranus. |
+| `planets_data.Neptune` | Hourly Sun-centered vector list for Neptune. |
+| `planets_data.<planet>[]` | Each planet vector uses the same `jd`, `datetime`, position, and velocity fields as `vectors[]`. |
 
 ## Sentry fields
 
