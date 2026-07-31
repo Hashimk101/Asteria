@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: asteria-api
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: NASA_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: "*"
+
+cronjobs:
+  - name: asteria-collector
+    env: python
+    rootDir: backend
+    schedule: "*/30 * * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python collector/collector.py
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: NASA_API_KEY
+        sync: false
