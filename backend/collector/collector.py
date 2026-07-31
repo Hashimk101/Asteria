@@ -213,10 +213,22 @@ def run_collector():
         except Exception:
             db.rollback()
 
-    print(f"Successfully saved {planet_saved} planet trajectory vectors.", flush=True)
+    # 5. Cleanup outdated trajectories older than yesterday
+    print("Step 5/5: Cleaning up outdated trajectory vectors older than yesterday...", flush=True)
+    try:
+        from sqlalchemy import text
+        db.execute(text("DELETE FROM asteroid_trajectories WHERE datetime < NOW() - INTERVAL '1 day'"))
+        db.execute(text("DELETE FROM planet_trajectories WHERE datetime < NOW() - INTERVAL '1 day'"))
+        db.commit()
+        print("Successfully cleaned up old trajectory vectors.", flush=True)
+    except Exception as e:
+        db.rollback()
+        print(f"Warning during cleanup of old trajectory vectors: {e}", flush=True)
+
     db.close()
     print(f"[{datetime.now().isoformat()}] === Collector Job Finished Successfully ===", flush=True)
 
 
 if __name__ == "__main__":
     run_collector()
+
