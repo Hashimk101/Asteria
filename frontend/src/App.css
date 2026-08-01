@@ -1,0 +1,309 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;600&family=Share+Tech+Mono&display=swap');
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background:  #080500;
+  color:       #e8ddd0;
+  overflow-x:  hidden;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* ─────────────────────────────────────────
+   KEYFRAMES
+───────────────────────────────────────── */
+
+@keyframes crt-flicker {
+  0%, 97%, 100% { opacity: 1;    }
+  98%           { opacity: 0.92; }
+  99%           { opacity: 0.97; }
+}
+
+@keyframes glitch-h {
+  0%, 94%, 100% { transform: translateX(0);   filter: none; }
+  95%           { transform: translateX(-3px); filter: hue-rotate(40deg)  saturate(2); }
+  96%           { transform: translateX(3px);  filter: hue-rotate(-40deg) saturate(2); }
+  97%           { transform: translateX(-1px); filter: none; }
+}
+
+/* Glitch clip animations for ASTERIA title */
+@keyframes glitch-1 {
+  0%,  100% { clip-path: inset(0 0 100% 0); transform: translate(0); }
+  10%       { clip-path: inset(8%  0 55% 0); transform: translate(-4px,  1px); }
+  20%       { clip-path: inset(45% 0 25% 0); transform: translate( 4px, -1px); }
+  30%       { clip-path: inset(75% 0 8%  0); transform: translate(-2px,  2px); }
+  40%       { clip-path: inset(0 0 100% 0);  transform: translate(0); }
+}
+
+@keyframes glitch-2 {
+  0%,  100% { clip-path: inset(0 0 100% 0); transform: translate(0); }
+  15%       { clip-path: inset(25% 0 45% 0); transform: translate( 5px, -2px); }
+  25%       { clip-path: inset(55% 0 18% 0); transform: translate(-5px,  1px); }
+  35%       { clip-path: inset(5%  0 75% 0); transform: translate( 3px, -1px); }
+  45%       { clip-path: inset(0 0 100% 0);  transform: translate(0); }
+}
+
+/* Controls when glitch layers are visible — fires every 7s, brief burst */
+@keyframes glitch-trigger {
+  0%,  84%  { opacity: 0; }
+  85%, 100% { opacity: 1; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px)   rotate(0deg);   }
+  33%      { transform: translateY(-12px) rotate(0.3deg); }
+  66%      { transform: translateY(-6px)  rotate(-0.2deg); }
+}
+
+@keyframes orbit-rotate {
+  from { stroke-dashoffset: 0;    }
+  to   { stroke-dashoffset: -200; }
+}
+
+@keyframes star-twinkle {
+  0%, 100% { opacity: 0.1; }
+  50%      { opacity: 0.7; }
+}
+
+@keyframes scanline-move {
+  0%   { top: -8px;  opacity: 0; }
+  5%   { opacity: 1; }
+  95%  { opacity: 1; }
+  100% { top: 100%;  opacity: 0; }
+}
+
+@keyframes meteor-fly {
+  0%   { transform: translateX(-100px) translateY(0);     opacity: 0; }
+  8%   { opacity: 1; }
+  92%  { opacity: 1; }
+  100% { transform: translateX(110vw)  translateY(140px); opacity: 0; }
+}
+
+@keyframes noise-shift {
+  0%   { transform: translate(0,    0);   }
+  20%  { transform: translate(-2%, -1%); }
+  40%  { transform: translate(1%,   2%); }
+  60%  { transform: translate(-1%,  1%); }
+  80%  { transform: translate(2%,  -2%); }
+  100% { transform: translate(0,    0);   }
+}
+
+@keyframes signal-blink {
+  0%, 100% { opacity: 1;    }
+  50%      { opacity: 0.25; }
+}
+
+@keyframes pulse-soft {
+  0%, 100% {
+    box-shadow: 0 0 8px  rgba(196,140,64,0.3),
+                inset 0 0 8px  rgba(196,140,64,0.05);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(196,140,64,0.45),
+                inset 0 0 12px rgba(196,140,64,0.08);
+  }
+}
+
+@keyframes title-sweep {
+  0%   { left: -130%; }
+  100% { left:  130%; }
+}
+
+/* Galaxy dust drift — uses CSS custom property set inline */
+@keyframes dust-drift {
+  from { transform: translateX(0px)          translateY(0px);   }
+  to   { transform: translateX(var(--drift)) translateY(-22px); }
+}
+
+/* Scroll reveal — used by sections below hero */
+@keyframes reveal-up {
+  from { opacity: 0; transform: translateY(40px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* ─────────────────────────────────────────
+   UTILITY CLASSES
+───────────────────────────────────────── */
+
+.orbitron      { font-family: 'Orbitron',        monospace;  }
+.space-grotesk { font-family: 'Space Grotesk',   sans-serif; }
+.mono          { font-family: 'Share Tech Mono', monospace;  }
+
+.float        { animation: float        9s  ease-in-out infinite; }
+.star-twinkle { animation: star-twinkle 4s  ease-in-out infinite; }
+.signal-blink { animation: signal-blink 1.6s ease-in-out infinite; }
+.crt-flicker  { animation: crt-flicker  12s infinite; }
+.glitch       { animation: glitch-h     14s ease-in-out infinite; }
+
+/* Scroll-reveal utility — add .reveal to any section */
+.reveal {
+  opacity:    0;
+  transform:  translateY(40px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.reveal.visible {
+  opacity:   1;
+  transform: translateY(0);
+}
+
+/* ─────────────────────────────────────────
+   CRT SCANLINES
+───────────────────────────────────────── */
+
+.scanlines {
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(0,0,0,0.08) 0px,
+    rgba(0,0,0,0.08) 1px,
+    transparent      1px,
+    transparent      4px
+  );
+  pointer-events: none;
+}
+
+.scanline-bar {
+  position:       absolute;
+  left:           0;
+  right:          0;
+  top:            -8px;
+  height:         8px;
+  background:     linear-gradient(to bottom, transparent, rgba(196,150,80,0.05), transparent);
+  animation:      scanline-move 8s linear infinite;
+  pointer-events: none;
+  z-index:        22;
+}
+
+/* ─────────────────────────────────────────
+   FILM GRAIN
+───────────────────────────────────────── */
+
+.film-grain {
+  position:         absolute;
+  inset:            -50%;
+  width:            200%;
+  height:           200%;
+  opacity:          0.038;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:  180px 180px;
+  animation:        noise-shift 0.14s steps(1) infinite;
+  pointer-events:   none;
+}
+
+/* ─────────────────────────────────────────
+   TITLE SWEEP
+───────────────────────────────────────── */
+
+.title-block {
+  position: relative;
+  overflow: hidden;
+  display:  inline-block;
+}
+
+.title-block::after {
+  content:        '';
+  position:       absolute;
+  top:            0;
+  left:           -130%;
+  width:          50%;
+  height:         100%;
+  background:     linear-gradient(
+    to right,
+    transparent               0%,
+    rgba(240,220,180,0.1)    40%,
+    rgba(240,220,180,0.22)   50%,
+    rgba(240,220,180,0.1)    60%,
+    transparent              100%
+  );
+  animation:      title-sweep 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ─────────────────────────────────────────
+   NEON TEXT
+───────────────────────────────────────── */
+
+.neon-stroke {
+  color:               transparent;
+  -webkit-text-stroke: 2px #e8d0a0;
+  text-shadow:
+    0 0 8px  rgba(232,210,160,0.6),
+    0 0 20px rgba(196,140,64,0.3),
+    0 0 40px rgba(196,140,64,0.12);
+  paint-order: stroke fill;
+}
+
+.neon-fill {
+  color: #f0e4c8;
+  text-shadow:
+    0 0 8px  rgba(232,210,160,0.5),
+    0 0 20px rgba(196,140,64,0.25),
+    0 0 40px rgba(196,140,64,0.1);
+}
+
+/* ─────────────────────────────────────────
+   BUTTONS
+───────────────────────────────────────── */
+
+.btn-primary {
+  position:        relative;
+  padding:         11px 32px;
+  font-family:     'Share Tech Mono', monospace;
+  font-size:       11px;
+  letter-spacing:  0.2em;
+  text-transform:  uppercase;
+  background:      rgba(196,140,64,0.08);
+  color:           #d4944a;
+  border:          1px solid rgba(196,140,64,0.45);
+  cursor:          pointer;
+  transition:      all 0.25s ease;
+  text-decoration: none;
+  display:         inline-block;
+  overflow:        hidden;
+}
+
+.btn-primary:hover {
+  background:   rgba(196,140,64,0.18);
+  color:        #f0e0c8;
+  border-color: rgba(196,140,64,0.7);
+  box-shadow:   0 0 12px rgba(196,140,64,0.2),
+                inset 0 0 12px rgba(196,140,64,0.06);
+}
+
+.btn-outline {
+  padding:         11px 32px;
+  font-family:     'Share Tech Mono', monospace;
+  font-size:       11px;
+  letter-spacing:  0.2em;
+  text-transform:  uppercase;
+  background:      transparent;
+  color:           #6a5030;
+  border:          1px solid rgba(106,80,48,0.4);
+  cursor:          pointer;
+  transition:      all 0.25s ease;
+  text-decoration: none;
+  display:         inline-block;
+}
+
+.btn-outline:hover {
+  border-color: rgba(196,140,64,0.5);
+  color:        #d4944a;
+}
+
+/* ─────────────────────────────────────────
+   NAV — mobile hamburger visibility
+───────────────────────────────────────── */
+
+.nav-hamburger { display: none; }
+
+@media (max-width: 640px) {
+  .nav-hamburger          { display: block; }
+  .nav-desktop-links      { display: none !important; }
+}
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
