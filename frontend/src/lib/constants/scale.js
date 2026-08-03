@@ -5,6 +5,8 @@ export const MOON_DISTANCE_U = 384_400 / KM_PER_UNIT;  // 38.44 units
 
 // Convert raw km from API → scene units
 export const kmToUnits = (km) => km / KM_PER_UNIT;
+export const KM_SCALE = 1 / 1_000_000;
+
 
 // Earth-centered view camera sits at ~5x Earth radius
 export const EARTH_CAM_DISTANCE = EARTH_RADIUS_U * 5;  // ~3.2 units

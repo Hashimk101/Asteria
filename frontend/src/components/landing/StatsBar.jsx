@@ -1,5 +1,5 @@
-//src/components/landing/StatsBar.jsx
-import { useNeoStats, MOCK_STATS } from "../../lib/api/neo";
+// src/components/landing/StatsBar.jsx
+import { useNeoStats } from "../../lib/api/neo";
 
 function StatItem({ label, value, unit, highlight = false }) {
   return (
@@ -32,49 +32,65 @@ function StatItem({ label, value, unit, highlight = false }) {
   );
 }
 
+// ─── Fallback shown while loading ─────────────────────────────────────────────
+function StatsLoading() {
+  return (
+    <div style={{ textAlign: "center", padding: "16px", color: "#a07840", fontSize: "11px", letterSpacing: "0.3em" }}>
+      <span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>◌</span>
+      {" "}LOADING LIVE NEO DATA...
+    </div>
+  );
+}
+
 export default function StatsBar() {
-  const { data, isLoading, isError } = useNeoStats();
-  const stats = data ?? (isError ? MOCK_STATS : null);
+  const { data: stats, isLoading, isError } = useNeoStats();
 
-  if (isLoading && !stats) {
-    return (
-      <div style={{ textAlign: "center", padding: "16px", color: "#a07840", fontSize: "11px", letterSpacing: "0.3em" }}>
-        <span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>◌</span>
-        {" "}LOADING LIVE NEO DATA...
-      </div>
-    );
-  }
-
-  if (!stats) return null;
+  if (isLoading && !stats) return <StatsLoading />;
+  if (!stats)               return null;
 
   return (
     <div style={{
-      position:   "relative",
-      width:      "100%",
-      overflow:   "hidden",
-      borderTop:  "1px solid rgba(196,140,64,0.12)",
+      position:     "relative",
+      width:        "100%",
+      overflow:     "hidden",
+      borderTop:    "1px solid rgba(196,140,64,0.12)",
       borderBottom: "1px solid rgba(196,140,64,0.12)",
-      background: "linear-gradient(to right, transparent, rgba(196,140,64,0.06), transparent)",
+      background:   "linear-gradient(to right, transparent, rgba(196,140,64,0.06), transparent)",
     }}>
+      {/* Scanline overlay */}
       <div style={{
-        position:   "absolute",
-        inset:      0,
+        position:      "absolute",
+        inset:         0,
         pointerEvents: "none",
-        background: "linear-gradient(to bottom, transparent 45%, rgba(196,140,64,0.03) 50%, transparent 55%)",
-        animation:  "scanline 4s linear infinite",
+        background:    "linear-gradient(to bottom, transparent 45%, rgba(196,140,64,0.03) 50%, transparent 55%)",
+        animation:     "scanline 4s linear infinite",
       }} />
 
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center" }}>
-        <StatItem label="NEOs Tracked"           value={stats.total_neos_tracked}    highlight />
-        <StatItem label="Potentially Hazardous"  value={stats.potentially_hazardous} highlight />
-        <StatItem label="Close Approaches Today" value={stats.close_approaches_today} />
-        <StatItem label="Closest Miss"           value={Math.round(stats.closest_approach_km / 1000)} unit="K km" />
-        <StatItem label="Largest Tracked"        value={stats.largest_diameter_km.toFixed(1)} unit="km" />
+        <StatItem
+          label="NEOs Tracked"
+          value={stats.total_neos_tracked}
+          highlight
+        />
+        <StatItem
+          label="Potentially Hazardous"
+          value={stats.potentially_hazardous}
+          highlight
+        />
+        <StatItem
+          label="Sentry Objects"
+          value={stats.sentry_objects}
+        />
+        <StatItem
+          label="Largest Tracked"
+          value={stats.largest_diameter_km.toFixed(1)}
+          unit="km"
+        />
       </div>
 
       {isError && (
         <p style={{ textAlign: "center", fontSize: "9px", color: "rgba(196,140,64,0.4)", paddingBottom: "4px", letterSpacing: "0.2em" }}>
-          ⚠ LIVE DATA UNAVAILABLE — SHOWING CACHED VALUES
+          ⚠ LIVE DATA UNAVAILABLE
         </p>
       )}
     </div>

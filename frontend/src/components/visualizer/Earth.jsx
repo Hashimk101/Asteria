@@ -46,7 +46,6 @@ export default function Earth({ onLoaded }) {
     tex.colorSpace = THREE.SRGBColorSpace;
   });
 
-  // ✅ onLoaded fires after render — safe, no mutation here
   useEffect(() => {
     if (!firedRef.current) {
       firedRef.current = true;
