@@ -1,6 +1,7 @@
 import { Suspense, useState, useEffect, useRef } from "react";
 import { Canvas, useFrame }                       from "@react-three/fiber";
-import { OrbitControls }                    from "@react-three/drei";
+import { OrbitControls, Html }                    from "@react-three/drei";
+import { useThree }                               from "@react-three/fiber";
 import Earth                                      from "./Earth";
 import Sun                                        from "./Sun";
 import Planet                                     from "./Planet";
@@ -12,22 +13,16 @@ import {
   EARTH_CAM_DISTANCE,
 } from "../../lib/constants/scale";
 
-
-import {  Html }                   from "@react-three/drei";
-
-
-// ─── Cheat-scale orbital layout (like every real visualizer) ─────────────────
-// True distances compressed, planet sizes exaggerated so you can actually see them
-// This is exactly what NASA Eyes, Solar System Scope, etc. all do
+// ─── Cheat-scale orbital layout ───────────────────────────────────────────────
 const SOLAR_LAYOUT = {
-  Mercury: { orbitRadius: 18,  speed: 0.0048, tilt: 0.03,  size: 0.6  },
-  Venus:   { orbitRadius: 28,  speed: 0.0035, tilt: 0.04,  size: 0.9  },
-  Earth:   { orbitRadius: 40,  speed: 0.0029, tilt: 0.41,  size: 1.0  },
-  Mars:    { orbitRadius: 55,  speed: 0.0024, tilt: 0.44,  size: 0.7  },
-  Jupiter: { orbitRadius: 90,  speed: 0.0013, tilt: 0.05,  size: 3.5  },
-  Saturn:  { orbitRadius: 130, speed: 0.0009, tilt: 0.47,  size: 2.8  },
-  Uranus:  { orbitRadius: 170, speed: 0.0006, tilt: 1.71,  size: 1.8  },
-  Neptune: { orbitRadius: 210, speed: 0.0005, tilt: 0.49,  size: 1.7  },
+  Mercury: { orbitRadius: 18,  speed: 0.0048, size: 0.6  },
+  Venus:   { orbitRadius: 28,  speed: 0.0035, size: 0.9  },
+  Earth:   { orbitRadius: 40,  speed: 0.0029, size: 1.0  },
+  Mars:    { orbitRadius: 55,  speed: 0.0024, size: 0.7  },
+  Jupiter: { orbitRadius: 90,  speed: 0.0013, size: 3.5  },
+  Saturn:  { orbitRadius: 130, speed: 0.0009, size: 2.8  },
+  Uranus:  { orbitRadius: 170, speed: 0.0006, size: 1.8  },
+  Neptune: { orbitRadius: 210, speed: 0.0005, size: 1.7  },
 };
 
 const ORBIT_COLORS = {
@@ -41,9 +36,7 @@ const ORBIT_COLORS = {
   Neptune: '#4a6fff',
 };
 
-
-
-// ─── Orbit Ring — thicker, colored ───────────────────────────────────────────
+// ─── Orbit Ring ───────────────────────────────────────────────────────────────
 function OrbitRing({ radius, color }) {
   const points = [];
   for (let i = 0; i <= 128; i++) {
@@ -58,6 +51,7 @@ function OrbitRing({ radius, color }) {
   );
 }
 
+// ─── Deterministic starting angle so planets don't all start at same spot ─────
 function getInitialOrbitAngle(name) {
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
@@ -66,10 +60,15 @@ function getInitialOrbitAngle(name) {
   return (hash / 0xffffffff) * Math.PI * 2;
 }
 
+// ─── Orbiting Planet ──────────────────────────────────────────────────────────
 function OrbitingPlanet({ name, layout, apiData }) {
-  const groupRef  = useRef();
-  const angleRef  = useRef(getInitialOrbitAngle(name));
+  const groupRef = useRef();
+  const angleRef = useRef(getInitialOrbitAngle(name));
   const [hovered, setHovered] = useState(false);
+
+  // useThree gives us camera + controls so double-click can focus on this planet
+  // makeDefault on OrbitControls is REQUIRED for controls to be accessible here
+  const { camera, controls } = useThree();
 
   useFrame((_, delta) => {
     angleRef.current += delta * layout.speed;
@@ -79,16 +78,41 @@ function OrbitingPlanet({ name, layout, apiData }) {
     }
   });
 
+  // Double-click → move OrbitControls target + camera to this planet
+  // Without this, zoom always centers on Sun at [0,0,0]
+  const handleDoubleClick = (e) => {
+    e.stopPropagation();
+    if (!groupRef.current || !controls) return;
+
+    const pos = groupRef.current.position;
+    const s   = layout.size;
+
+    // Snap controls target to planet — now scroll-zoom centers on it
+    controls.target.set(pos.x, pos.y, pos.z);
+
+    // Move camera to a close orbit around the planet
+    camera.position.set(
+      pos.x + s * 8,
+      pos.y + s * 4,
+      pos.z + s * 8,
+    );
+
+    controls.update();
+  };
+
   const planetData = { name, x_km: 0, y_km: 0, z_km: 0, ...(apiData ?? {}) };
+  const color      = ORBIT_COLORS[name] ?? '#ffffff';
 
   return (
     <>
-      <OrbitRing radius={layout.orbitRadius} color={ORBIT_COLORS[name] ?? '#ffffff'} />
+      <OrbitRing radius={layout.orbitRadius} color={color} />
       <group ref={groupRef}>
-        {/* Invisible hit area — easier to hover than the tiny planet mesh */}
+
+        {/* Invisible hit sphere — 2.5x planet size so it's easy to hover/click */}
         <mesh
           onPointerOver={(e) => { e.stopPropagation(); setHovered(true);  document.body.style.cursor = 'pointer'; }}
           onPointerOut ={() => {                        setHovered(false); document.body.style.cursor = 'auto';    }}
+          onDoubleClick={handleDoubleClick}
         >
           <sphereGeometry args={[layout.size * 2.5, 16, 16]} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
@@ -96,25 +120,20 @@ function OrbitingPlanet({ name, layout, apiData }) {
 
         <Planet data={planetData} sizeOverride={layout.size} />
 
-        {/* Hover label */}
         {hovered && (
-          <Html
-            center
-            distanceFactor={80}
-            style={{ pointerEvents: 'none' }}
-          >
+          <Html center distanceFactor={80} style={{ pointerEvents: 'none' }}>
             <div style={{
               background:    'rgba(5,3,0,0.88)',
-              border:        `1px solid ${ORBIT_COLORS[name] ?? '#ffffff'}55`,
+              border:        `1px solid ${color}55`,
               borderRadius:  '4px',
               padding:       '5px 12px',
-              color:         ORBIT_COLORS[name] ?? '#ffffff',
+              color,
               fontSize:      '11px',
               fontFamily:    'monospace',
               letterSpacing: '0.15em',
               whiteSpace:    'nowrap',
               textTransform: 'uppercase',
-              boxShadow:     `0 0 12px ${ORBIT_COLORS[name] ?? '#ffffff'}33`,
+              boxShadow:     `0 0 12px ${color}33`,
             }}>
               {name}
             </div>
@@ -125,24 +144,49 @@ function OrbitingPlanet({ name, layout, apiData }) {
   );
 }
 
-
 // ─── Solar System Scene ───────────────────────────────────────────────────────
 function SolarSystemContent({ apiPlanets }) {
   return (
     <>
-      <ambientLight intensity={0.5} color="#1a1a4a" />   {/* ← was 0.18 */}
+      {/*
+        ambientLight: flat base so nothing is pitch black
+        hemisphereLight: sky warm / ground cool — kills the harsh half-dark look
+        These two together mean the dark side of a planet is dimly visible,
+        not a hard black wall
+      */}
+      <ambientLight intensity={0.35} color="#1a1a4a" />
+      <hemisphereLight
+        skyColor="#ffe8c0"
+        groundColor="#1a2a4a"
+        intensity={0.45}
+      />
+
       <MilkyWay />
       <Sun />
-      <Suspense fallback={null}>
-        {Object.entries(SOLAR_LAYOUT).map(([name, layout]) => (
+
+      {/*
+        Each planet gets its OWN Suspense boundary with a colored dot fallback.
+        Before: one Suspense wraps all 8 → nothing shows until ALL 8 textures load.
+        After:  each planet shows a colored dot immediately, texture fades in when ready.
+      */}
+      {Object.entries(SOLAR_LAYOUT).map(([name, layout]) => (
+        <Suspense
+          key={name}
+          fallback={
+            // Glowing dot at planet's starting position while texture loads
+            <mesh position={[layout.orbitRadius, 0, 0]}>
+              <sphereGeometry args={[layout.size, 16, 16]} />
+              <meshBasicMaterial color={ORBIT_COLORS[name] ?? '#ffffff'} />
+            </mesh>
+          }
+        >
           <OrbitingPlanet
-            key={name}
             name={name}
             layout={layout}
             apiData={apiPlanets[name]}
           />
-        ))}
-      </Suspense>
+        </Suspense>
+      ))}
     </>
   );
 }
@@ -204,9 +248,9 @@ function ViewToggle({ mode, onToggle }) {
 
 // ─── Main Scene ───────────────────────────────────────────────────────────────
 export default function Scene() {
-  const [earthReady, setEarthReady]       = useState(false);
-  const [mode, setMode]                   = useState("earth");
-  const [apiPlanets, setApiPlanets]       = useState({});
+  const [earthReady, setEarthReady] = useState(false);
+  const [mode, setMode]             = useState("earth");
+  const [apiPlanets, setApiPlanets] = useState({});
 
   useEffect(() => {
     if (mode === "solar" && Object.keys(apiPlanets).length === 0) {
@@ -225,7 +269,7 @@ export default function Scene() {
         far:  50_000,
       }
     : {
-        position: [0, 120, 280],   // pulled back to see full solar system
+        position: [0, 350, 80],  // top-down, slight forward tilt
         fov:  55,
         near: 0.1,
         far:  10_000,
@@ -239,10 +283,12 @@ export default function Scene() {
         zoomSpeed:   0.7,
       }
     : {
-        minDistance: 15,
-        maxDistance: 600,          // Neptune orbit is at 210 units
-        rotateSpeed: 0.5,
-        zoomSpeed:   1.0,
+        minDistance:   5,
+        maxDistance:   700,       // beyond Neptune at 210u, room to zoom out
+        rotateSpeed:   0.5,
+        zoomSpeed:     1.0,
+        minPolarAngle: 0,         // can go fully top-down
+        maxPolarAngle: Math.PI / 1.8,  // can tilt but not flip under the plane
       };
 
   return (
@@ -270,16 +316,22 @@ export default function Scene() {
           ? <EarthContent onEarthLoaded={() => setEarthReady(true)} />
           : <SolarSystemContent apiPlanets={apiPlanets} />
         }
+
+        {/*
+          makeDefault is CRITICAL — without it, useThree() inside OrbitingPlanet
+          can't access `controls`, so double-click focus won't work
+        */}
         <OrbitControls
+          makeDefault
           enablePan={false}
           enableZoom={true}
           enableRotate={true}
           dampingFactor={0.07}
           enableDamping={true}
-          makeDefault
           {...controlsConfig}
         />
       </Canvas>
     </>
   );
 }
+
