@@ -1,13 +1,12 @@
 import { Suspense, useState, useEffect, useRef } from "react";
-import { Canvas, useFrame }                       from "@react-three/fiber";
-import { OrbitControls, Html }                    from "@react-three/drei";
-import { useThree }                               from "@react-three/fiber";
-import Earth                                      from "./Earth";
-import Sun                                        from "./Sun";
-import Planet                                     from "./Planet";
-import MilkyWay                                   from "./MilkyWay";
-import LoadingScreen                              from "./LoadingScreen";
-import * as THREE                                 from "three";
+import { Canvas, useFrame, useThree }            from "@react-three/fiber";
+import { OrbitControls, Html }                   from "@react-three/drei";
+import Earth                                     from "./Earth";
+import Sun                                       from "./Sun";
+import Planet                                    from "./Planet";
+import MilkyWay                                  from "./MilkyWay";
+import LoadingScreen                             from "./LoadingScreen";
+import * as THREE                                from "three";
 import {
   EARTH_RADIUS_U,
   EARTH_CAM_DISTANCE,
@@ -51,7 +50,7 @@ function OrbitRing({ radius, color }) {
   );
 }
 
-// ─── Deterministic starting angle so planets don't all start at same spot ─────
+// ─── Deterministic starting angle ─────────────────────────────────────────────
 function getInitialOrbitAngle(name) {
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
@@ -66,9 +65,14 @@ function OrbitingPlanet({ name, layout, apiData }) {
   const angleRef = useRef(getInitialOrbitAngle(name));
   const [hovered, setHovered] = useState(false);
 
-  // useThree gives us camera + controls so double-click can focus on this planet
-  // makeDefault on OrbitControls is REQUIRED for controls to be accessible here
+  // ✅ useThree FIRST — before any useState that references its values
   const { camera, controls } = useThree();
+
+  // ✅ Derive ready directly from controls — no useState needed
+  // controls is null for first 1-2 frames, then populated by makeDefault
+  // Using it directly in handlers is safe because handlers only fire on user action,
+  // by which time controls is always initialized
+  const isReady = !!controls;
 
   useFrame((_, delta) => {
     angleRef.current += delta * layout.speed;
@@ -78,26 +82,28 @@ function OrbitingPlanet({ name, layout, apiData }) {
     }
   });
 
-  // Double-click → move OrbitControls target + camera to this planet
-  // Without this, zoom always centers on Sun at [0,0,0]
   const handleDoubleClick = (e) => {
     e.stopPropagation();
-    if (!groupRef.current || !controls) return;
+    // Double-guard — controls must exist and group must be mounted
+    if (!controls || !groupRef.current) return;
 
     const pos = groupRef.current.position;
     const s   = layout.size;
 
-    // Snap controls target to planet — now scroll-zoom centers on it
     controls.target.set(pos.x, pos.y, pos.z);
-
-    // Move camera to a close orbit around the planet
-    camera.position.set(
-      pos.x + s * 8,
-      pos.y + s * 4,
-      pos.z + s * 8,
-    );
-
+    camera.position.set(pos.x + s * 8, pos.y + s * 4, pos.z + s * 8);
     controls.update();
+  };
+
+  const handlePointerOver = (e) => {
+    e.stopPropagation();
+    setHovered(true);
+    document.body.style.cursor = 'pointer';
+  };
+
+  const handlePointerOut = () => {
+    setHovered(false);
+    document.body.style.cursor = 'auto';
   };
 
   const planetData = { name, x_km: 0, y_km: 0, z_km: 0, ...(apiData ?? {}) };
@@ -108,11 +114,11 @@ function OrbitingPlanet({ name, layout, apiData }) {
       <OrbitRing radius={layout.orbitRadius} color={color} />
       <group ref={groupRef}>
 
-        {/* Invisible hit sphere — 2.5x planet size so it's easy to hover/click */}
+        {/* Hit sphere — always mounted, never inside Suspense */}
         <mesh
-          onPointerOver={(e) => { e.stopPropagation(); setHovered(true);  document.body.style.cursor = 'pointer'; }}
-          onPointerOut ={() => {                        setHovered(false); document.body.style.cursor = 'auto';    }}
-          onDoubleClick={handleDoubleClick}
+          onPointerOver={handlePointerOver}
+          onPointerOut={handlePointerOut}
+          onDoubleClick={isReady ? handleDoubleClick : undefined}
         >
           <sphereGeometry args={[layout.size * 2.5, 16, 16]} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
@@ -148,44 +154,17 @@ function OrbitingPlanet({ name, layout, apiData }) {
 function SolarSystemContent({ apiPlanets }) {
   return (
     <>
-      {/*
-        ambientLight: flat base so nothing is pitch black
-        hemisphereLight: sky warm / ground cool — kills the harsh half-dark look
-        These two together mean the dark side of a planet is dimly visible,
-        not a hard black wall
-      */}
       <ambientLight intensity={0.35} color="#1a1a4a" />
-      <hemisphereLight
-        skyColor="#ffe8c0"
-        groundColor="#1a2a4a"
-        intensity={0.45}
-      />
-
+      <hemisphereLight skyColor="#ffe8c0" groundColor="#1a2a4a" intensity={0.45} />
       <MilkyWay />
       <Sun />
-
-      {/*
-        Each planet gets its OWN Suspense boundary with a colored dot fallback.
-        Before: one Suspense wraps all 8 → nothing shows until ALL 8 textures load.
-        After:  each planet shows a colored dot immediately, texture fades in when ready.
-      */}
       {Object.entries(SOLAR_LAYOUT).map(([name, layout]) => (
-        <Suspense
+        <OrbitingPlanet
           key={name}
-          fallback={
-            // Glowing dot at planet's starting position while texture loads
-            <mesh position={[layout.orbitRadius, 0, 0]}>
-              <sphereGeometry args={[layout.size, 16, 16]} />
-              <meshBasicMaterial color={ORBIT_COLORS[name] ?? '#ffffff'} />
-            </mesh>
-          }
-        >
-          <OrbitingPlanet
-            name={name}
-            layout={layout}
-            apiData={apiPlanets[name]}
-          />
-        </Suspense>
+          name={name}
+          layout={layout}
+          apiData={apiPlanets[name]}
+        />
       ))}
     </>
   );
@@ -241,7 +220,7 @@ function ViewToggle({ mode, onToggle }) {
         e.currentTarget.style.color       = "#d4944a";
       }}
     >
-      {mode === "earth" ? "🌌 SOLAR SYSTEM" : "🌍 EARTH VIEW"}
+      {mode === "earth" ? " SOLAR SYSTEM" : " EARTH VIEW"}
     </button>
   );
 }
@@ -269,8 +248,8 @@ export default function Scene() {
         far:  50_000,
       }
     : {
-        position: [0, 350, 80],  // top-down, slight forward tilt
-        fov:  55,
+        position: [0, 80, 320],
+        fov:  60,
         near: 0.1,
         far:  10_000,
       };
@@ -284,11 +263,11 @@ export default function Scene() {
       }
     : {
         minDistance:   5,
-        maxDistance:   700,       // beyond Neptune at 210u, room to zoom out
+        maxDistance:   700,
         rotateSpeed:   0.5,
         zoomSpeed:     1.0,
-        minPolarAngle: 0,         // can go fully top-down
-        maxPolarAngle: Math.PI / 1.8,  // can tilt but not flip under the plane
+        minPolarAngle: 0,
+        maxPolarAngle: Math.PI / 1.8,
       };
 
   return (
@@ -298,7 +277,6 @@ export default function Scene() {
         mode={mode}
         onToggle={() => setMode(m => m === "earth" ? "solar" : "earth")}
       />
-
       <Canvas
         key={mode}
         camera={cameraConfig}
@@ -316,11 +294,6 @@ export default function Scene() {
           ? <EarthContent onEarthLoaded={() => setEarthReady(true)} />
           : <SolarSystemContent apiPlanets={apiPlanets} />
         }
-
-        {/*
-          makeDefault is CRITICAL — without it, useThree() inside OrbitingPlanet
-          can't access `controls`, so double-click focus won't work
-        */}
         <OrbitControls
           makeDefault
           enablePan={false}
@@ -334,4 +307,3 @@ export default function Scene() {
     </>
   );
 }
-
