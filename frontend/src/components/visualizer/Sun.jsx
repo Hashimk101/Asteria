@@ -3,6 +3,12 @@ import { useFrame } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import sunTex from '../../assets/textures/8k_sun.jpg';
+import { SUN_VISUAL_RADIUS } from '../../lib/constants/scale';
+
+// SUN_VISUAL_RADIUS ≈ 37 units
+// Mercury orbit    ≈ 38.7 units  ✅ Sun fits just inside
+// Earth orbit      ≈ 100 units
+// Jupiter orbit    ≈ 520 units
 
 export default function Sun() {
   const meshRef = useRef();
@@ -16,29 +22,37 @@ export default function Sun() {
 
   return (
     <group position={[0, 0, 0]}>
-      {/* Strong inner light for inner planets */}
-      <pointLight intensity={2000} distance={300}  decay={1.0} color="#FFF5E0" />
-      {/* Softer far-reaching light for outer planets */}
-      <pointLight intensity={3000} distance={0}    decay={1.4} color="#FFE8C0" />
+      <pointLight intensity={2000} distance={300} decay={1.0} color="#FFF5E0" />
+      <pointLight intensity={3000} distance={0}   decay={1.4} color="#FFE8C0" />
 
-      {/* Sun body — bigger so it's visible */}
+      {/* Sun body */}
       <mesh ref={meshRef}>
-        <sphereGeometry args={[14, 64, 64]} />
+        <sphereGeometry args={[SUN_VISUAL_RADIUS, 64, 64]} />
         <meshBasicMaterial map={texture} />
       </mesh>
 
       {/* Inner corona */}
       <mesh>
-        <sphereGeometry args={[16, 64, 64]} />
-        <meshBasicMaterial color="#FDB813" transparent opacity={0.12}
-          side={THREE.BackSide} blending={THREE.AdditiveBlending} />
+        <sphereGeometry args={[SUN_VISUAL_RADIUS * 1.08, 64, 64]} />
+        <meshBasicMaterial
+          color="#FDB813"
+          transparent
+          opacity={0.12}
+          side={THREE.BackSide}
+          blending={THREE.AdditiveBlending}
+        />
       </mesh>
 
       {/* Outer glow */}
       <mesh>
-        <sphereGeometry args={[22, 64, 64]} />
-        <meshBasicMaterial color="#ff6600" transparent opacity={0.05}
-          side={THREE.BackSide} blending={THREE.AdditiveBlending} />
+        <sphereGeometry args={[SUN_VISUAL_RADIUS * 1.5, 64, 64]} />
+        <meshBasicMaterial
+          color="#ff6600"
+          transparent
+          opacity={0.05}
+          side={THREE.BackSide}
+          blending={THREE.AdditiveBlending}
+        />
       </mesh>
     </group>
   );
