@@ -1,24 +1,36 @@
-//PLANET TEXTURES AND PROPERTIES
-import MercuryTexture from "../../assets/textures/8k_mercury.webp"
-import VenusTexture from "../../assets/textures/8k_venus_surface.jpg"
-import EarthTexture from "../../assets/textures/8k_earth_daymap.webp"
-import MarsTexture from "../../assets/textures/8k_mars.jpg"
-import JupiterTexture from "../../assets/textures/8k_jupiter.jpg"
-import SaturnTexture from "../../assets/textures/8k_saturn.jpg"
-import UranusTexture from "../../assets/textures/2k_uranus.jpg"
-import NeptuneTexture from "../../assets/textures/2k_neptune.jpg"
+// ─── Texture paths ────────────────────────────────────────────────────────────
+import earthTex   from '../../assets/textures/8k_earth_daymap.webp';
+import sunTex     from '../../assets/textures/8k_sun.jpg';
+import mercuryTex from '../../assets/textures/2k_mercury.jpg';
+import venusTex   from '../../assets/textures/2k_venus_surface.jpg';
+import marsTex    from '../../assets/textures/2k_mars.jpg';
+import jupiterTex from '../../assets/textures/2k_jupiter.jpg';
+import saturnTex  from '../../assets/textures/2k_saturn.jpg';
+import uranusTex  from '../../assets/textures/2k_uranus.jpg';
+import neptuneTex from '../../assets/textures/2k_neptune.jpg';
 
 export const PLANET_CONFIG = {
-  Mercury: { texture: MercuryTexture,  radius: 0.20, rotationSpeed: 0.003, roughness: 0.95, metalness: 0.0  },
-  Venus:   { texture: VenusTexture,    radius: 0.40, rotationSpeed: 0.002, roughness: 0.90, metalness: 0.0  },
-  Earth:   { texture: EarthTexture,    radius: 0.45, rotationSpeed: 0.04,  roughness: 0.78, metalness: 0.02 },
-  Mars:    { texture: MarsTexture,     radius: 0.30, rotationSpeed: 0.038, roughness: 0.90, metalness: 0.0  },
-  Jupiter: { texture: JupiterTexture,  radius: 1.20, rotationSpeed: 0.09,  roughness: 0.70, metalness: 0.0  },
-  Saturn:  { texture: SaturnTexture,   radius: 1.00, rotationSpeed: 0.085, roughness: 0.75, metalness: 0.0  },
-  Uranus:  { texture: UranusTexture,   radius: 0.70, rotationSpeed: 0.05,  roughness: 0.80, metalness: 0.0  },
-  Neptune: { texture: NeptuneTexture,  radius: 0.65, rotationSpeed: 0.045, roughness: 0.80, metalness: 0.0  },
+  Sun: {
+    texture:           sunTex,
+    roughness:         0.4,
+    metalness:         0.0,
+    rotationSpeed:     0.008,
+    radius:            695.7,
+    emissive:          '#ff6600',
+    emissiveIntensity: 0.6,
+  },
+  Earth: {
+    texture:       earthTex,
+    roughness:     0.6,
+    metalness:     0.05,
+    rotationSpeed: 0.05,
+    radius:        6.4,
+  },
+  Mercury: { texture: mercuryTex, roughness: 0.95, metalness: 0.0, rotationSpeed: 0.01,  radius: 2.4  },
+  Venus:   { texture: venusTex,   roughness: 0.85, metalness: 0.0, rotationSpeed: 0.007, radius: 6.1  },
+  Mars:    { texture: marsTex,    roughness: 0.95, metalness: 0.0, rotationSpeed: 0.048, radius: 3.4  },
+  Jupiter: { texture: jupiterTex, roughness: 0.7,  metalness: 0.0, rotationSpeed: 0.12,  radius: 70.0 },
+  Saturn:  { texture: saturnTex,  roughness: 0.75, metalness: 0.0, rotationSpeed: 0.11,  radius: 58.5 },
+  Uranus:  { texture: uranusTex,  roughness: 0.8,  metalness: 0.0, rotationSpeed: 0.06,  radius: 25.4 },
+  Neptune: { texture: neptuneTex, roughness: 0.8,  metalness: 0.0, rotationSpeed: 0.058, radius: 24.6 },
 };
-
-
-
-

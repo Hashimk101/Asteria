@@ -10,19 +10,36 @@ import * as THREE                                from "three";
 import {
   EARTH_RADIUS_U,
   EARTH_CAM_DISTANCE,
+  ORBITAL_RADII_AU,
+  AU_TO_UNITS,
+  KM_TO_UNITS,
+  PLANET_VISUAL_RADII,
 } from "../../lib/constants/scale";
 
-// ─── Cheat-scale orbital layout ───────────────────────────────────────────────
-const SOLAR_LAYOUT = {
-  Mercury: { orbitRadius: 18,  speed: 0.0048, size: 0.6  },
-  Venus:   { orbitRadius: 28,  speed: 0.0035, size: 0.9  },
-  Earth:   { orbitRadius: 40,  speed: 0.0029, size: 1.0  },
-  Mars:    { orbitRadius: 55,  speed: 0.0024, size: 0.7  },
-  Jupiter: { orbitRadius: 90,  speed: 0.0013, size: 3.5  },
-  Saturn:  { orbitRadius: 130, speed: 0.0009, size: 2.8  },
-  Uranus:  { orbitRadius: 170, speed: 0.0006, size: 1.8  },
-  Neptune: { orbitRadius: 210, speed: 0.0005, size: 1.7  },
+// ─── Build SOLAR_LAYOUT from real data ────────────────────────────────────────
+// Orbital periods from Kepler's third law: T = AU^1.5 years, speed ∝ 1/T
+// Speed values are angular speed in rad/s scaled for Three.js deltaTime (seconds)
+const ORBITAL_SPEEDS = {
+  Mercury: 0.0048,
+  Venus:   0.0035,
+  Earth:   0.0029,
+  Mars:    0.0024,
+  Jupiter: 0.0013,
+  Saturn:  0.0009,
+  Uranus:  0.0006,
+  Neptune: 0.0005,
 };
+
+const SOLAR_LAYOUT = Object.fromEntries(
+  Object.entries(ORBITAL_RADII_AU).map(([name, au]) => [
+    name,
+    {
+      orbitRadius: au * AU_TO_UNITS,           // real proportional distance
+      speed:       ORBITAL_SPEEDS[name],
+      size:        PLANET_VISUAL_RADII[name],  // real proportional radius
+    },
+  ])
+);
 
 const ORBIT_COLORS = {
   Mercury: '#a0a0a0',
@@ -53,9 +70,7 @@ function OrbitRing({ radius, color }) {
 // ─── Deterministic starting angle ─────────────────────────────────────────────
 function getInitialOrbitAngle(name) {
   let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-  }
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
   return (hash / 0xffffffff) * Math.PI * 2;
 }
 
@@ -65,46 +80,40 @@ function OrbitingPlanet({ name, layout, apiData }) {
   const angleRef = useRef(getInitialOrbitAngle(name));
   const [hovered, setHovered] = useState(false);
 
-  // ✅ useThree FIRST — before any useState that references its values
   const { camera, controls } = useThree();
-
-  // ✅ Derive ready directly from controls — no useState needed
-  // controls is null for first 1-2 frames, then populated by makeDefault
-  // Using it directly in handlers is safe because handlers only fire on user action,
-  // by which time controls is always initialized
   const isReady = !!controls;
 
   useFrame((_, delta) => {
-    angleRef.current += delta * layout.speed;
-    if (groupRef.current) {
-      groupRef.current.position.x = Math.cos(angleRef.current) * layout.orbitRadius;
-      groupRef.current.position.z = Math.sin(angleRef.current) * layout.orbitRadius;
+    // If API gives live position in km, use that instead of circular orbit
+    if (apiData?.x_km && apiData?.y_km) {
+      if (groupRef.current) {
+        groupRef.current.position.x = apiData.x_km * KM_TO_UNITS;
+        groupRef.current.position.y = (apiData.z_km ?? 0) * KM_TO_UNITS; // ecliptic tilt
+        groupRef.current.position.z = apiData.y_km * KM_TO_UNITS;
+      }
+    } else {
+      // Fallback: circular orbit
+      angleRef.current += delta * layout.speed;
+      if (groupRef.current) {
+        groupRef.current.position.x = Math.cos(angleRef.current) * layout.orbitRadius;
+        groupRef.current.position.y = 0;
+        groupRef.current.position.z = Math.sin(angleRef.current) * layout.orbitRadius;
+      }
     }
   });
 
   const handleDoubleClick = (e) => {
     e.stopPropagation();
-    // Double-guard — controls must exist and group must be mounted
     if (!controls || !groupRef.current) return;
-
     const pos = groupRef.current.position;
     const s   = layout.size;
-
     controls.target.set(pos.x, pos.y, pos.z);
     camera.position.set(pos.x + s * 8, pos.y + s * 4, pos.z + s * 8);
     controls.update();
   };
 
-  const handlePointerOver = (e) => {
-    e.stopPropagation();
-    setHovered(true);
-    document.body.style.cursor = 'pointer';
-  };
-
-  const handlePointerOut = () => {
-    setHovered(false);
-    document.body.style.cursor = 'auto';
-  };
+  const handlePointerOver = (e) => { e.stopPropagation(); setHovered(true);  document.body.style.cursor = 'pointer'; };
+  const handlePointerOut  = ()  => {                      setHovered(false); document.body.style.cursor = 'auto';    };
 
   const planetData = { name, x_km: 0, y_km: 0, z_km: 0, ...(apiData ?? {}) };
   const color      = ORBIT_COLORS[name] ?? '#ffffff';
@@ -113,8 +122,7 @@ function OrbitingPlanet({ name, layout, apiData }) {
     <>
       <OrbitRing radius={layout.orbitRadius} color={color} />
       <group ref={groupRef}>
-
-        {/* Hit sphere — always mounted, never inside Suspense */}
+        {/* Hit sphere — 2.5x visual radius for easy pointer detection */}
         <mesh
           onPointerOver={handlePointerOver}
           onPointerOut={handlePointerOut}
@@ -129,17 +137,11 @@ function OrbitingPlanet({ name, layout, apiData }) {
         {hovered && (
           <Html center distanceFactor={80} style={{ pointerEvents: 'none' }}>
             <div style={{
-              background:    'rgba(5,3,0,0.88)',
-              border:        `1px solid ${color}55`,
-              borderRadius:  '4px',
-              padding:       '5px 12px',
-              color,
-              fontSize:      '11px',
-              fontFamily:    'monospace',
-              letterSpacing: '0.15em',
-              whiteSpace:    'nowrap',
-              textTransform: 'uppercase',
-              boxShadow:     `0 0 12px ${color}33`,
+              background: 'rgba(5,3,0,0.88)', border: `1px solid ${color}55`,
+              borderRadius: '4px', padding: '5px 12px', color,
+              fontSize: '11px', fontFamily: 'monospace', letterSpacing: '0.15em',
+              whiteSpace: 'nowrap', textTransform: 'uppercase',
+              boxShadow: `0 0 12px ${color}33`,
             }}>
               {name}
             </div>
@@ -157,14 +159,9 @@ function SolarSystemContent({ apiPlanets }) {
       <ambientLight intensity={0.35} color="#1a1a4a" />
       <hemisphereLight skyColor="#ffe8c0" groundColor="#1a2a4a" intensity={0.45} />
       <MilkyWay />
-      <Sun />
+      <Sun size={PLANET_VISUAL_RADII.Sun} />
       {Object.entries(SOLAR_LAYOUT).map(([name, layout]) => (
-        <OrbitingPlanet
-          key={name}
-          name={name}
-          layout={layout}
-          apiData={apiPlanets[name]}
-        />
+        <OrbitingPlanet key={name} name={name} layout={layout} apiData={apiPlanets[name]} />
       ))}
     </>
   );
@@ -188,39 +185,18 @@ function EarthContent({ onEarthLoaded }) {
 // ─── Mode Toggle ──────────────────────────────────────────────────────────────
 function ViewToggle({ mode, onToggle }) {
   return (
-    <button
-      onClick={onToggle}
-      className="mono"
-      style={{
-        position:             "fixed",
-        top:                  "60px",
-        right:                "20px",
-        zIndex:               150,
-        background:           "rgba(8,5,0,0.85)",
-        border:               "1px solid rgba(196,140,64,0.35)",
-        borderRadius:         "4px",
-        color:                "#d4944a",
-        padding:              "10px 16px",
-        fontSize:             "10px",
-        letterSpacing:        "0.2em",
-        textTransform:        "uppercase",
-        cursor:               "pointer",
-        backdropFilter:       "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        transition:           "all 0.25s ease",
-      }}
-      onMouseEnter={e => {
-        e.currentTarget.style.background  = "rgba(196,140,64,0.12)";
-        e.currentTarget.style.borderColor = "rgba(196,140,64,0.6)";
-        e.currentTarget.style.color       = "#f0d4a0";
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.background  = "rgba(8,5,0,0.85)";
-        e.currentTarget.style.borderColor = "rgba(196,140,64,0.35)";
-        e.currentTarget.style.color       = "#d4944a";
-      }}
+    <button onClick={onToggle} className="mono" style={{
+      position: "fixed", top: "60px", right: "20px", zIndex: 150,
+      background: "rgba(8,5,0,0.85)", border: "1px solid rgba(196,140,64,0.35)",
+      borderRadius: "4px", color: "#d4944a", padding: "10px 16px",
+      fontSize: "10px", letterSpacing: "0.2em", textTransform: "uppercase",
+      cursor: "pointer", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+      transition: "all 0.25s ease",
+    }}
+      onMouseEnter={e => { e.currentTarget.style.background = "rgba(196,140,64,0.12)"; e.currentTarget.style.borderColor = "rgba(196,140,64,0.6)"; e.currentTarget.style.color = "#f0d4a0"; }}
+      onMouseLeave={e => { e.currentTarget.style.background = "rgba(8,5,0,0.85)";      e.currentTarget.style.borderColor = "rgba(196,140,64,0.35)"; e.currentTarget.style.color = "#d4944a"; }}
     >
-      {mode === "earth" ? " SOLAR SYSTEM" : " EARTH VIEW"}
+      {mode === "earth" ? "🌌 SOLAR SYSTEM" : "🌍 EARTH VIEW"}
     </button>
   );
 }
@@ -241,68 +217,30 @@ export default function Scene() {
   }, [mode]);
 
   const cameraConfig = mode === "earth"
-    ? {
-        position: [0, EARTH_RADIUS_U * 1.2, EARTH_CAM_DISTANCE],
-        fov:  45,
-        near: 0.0001,
-        far:  50_000,
-      }
-    : {
-        position: [0, 80, 320],
-        fov:  60,
-        near: 0.1,
-        far:  10_000,
-      };
+    ? { position: [0, EARTH_RADIUS_U * 1.2, EARTH_CAM_DISTANCE], fov: 45, near: 0.0001, far: 50_000 }
+    : { position: [0, 800, 2000], fov: 60, near: 0.1, far: 50_000 };
+    // ↑ far bumped to 50k — Neptune is now at ~3006 units
 
   const controlsConfig = mode === "earth"
-    ? {
-        minDistance: EARTH_RADIUS_U * 1.5,
-        maxDistance: EARTH_RADIUS_U * 80,
-        rotateSpeed: 0.45,
-        zoomSpeed:   0.7,
-      }
-    : {
-        minDistance:   5,
-        maxDistance:   700,
-        rotateSpeed:   0.5,
-        zoomSpeed:     1.0,
-        minPolarAngle: 0,
-        maxPolarAngle: Math.PI / 1.8,
-      };
+    ? { minDistance: EARTH_RADIUS_U * 1.5, maxDistance: EARTH_RADIUS_U * 80, rotateSpeed: 0.45, zoomSpeed: 0.7 }
+    : { minDistance: 10, maxDistance: 8000, rotateSpeed: 0.5, zoomSpeed: 1.2, minPolarAngle: 0, maxPolarAngle: Math.PI / 1.8 };
 
   return (
     <>
       <LoadingScreen ready={earthReady} />
-      <ViewToggle
-        mode={mode}
-        onToggle={() => setMode(m => m === "earth" ? "solar" : "earth")}
-      />
+      <ViewToggle mode={mode} onToggle={() => setMode(m => m === "earth" ? "solar" : "earth")} />
       <Canvas
         key={mode}
         camera={cameraConfig}
         style={{ width: "100%", height: "100%" }}
-        gl={{
-          antialias:           true,
-          alpha:               false,
-          powerPreference:     "high-performance",
-          toneMapping:         3,
-          toneMappingExposure: mode === "solar" ? 0.85 : 1.1,
-        }}
+        gl={{ antialias: true, alpha: false, powerPreference: "high-performance", toneMapping: 3, toneMappingExposure: mode === "solar" ? 0.85 : 1.1 }}
         onCreated={({ gl }) => gl.setClearColor("#010205")}
       >
         {mode === "earth"
           ? <EarthContent onEarthLoaded={() => setEarthReady(true)} />
           : <SolarSystemContent apiPlanets={apiPlanets} />
         }
-        <OrbitControls
-          makeDefault
-          enablePan={false}
-          enableZoom={true}
-          enableRotate={true}
-          dampingFactor={0.07}
-          enableDamping={true}
-          {...controlsConfig}
-        />
+        <OrbitControls makeDefault enablePan={false} enableZoom dampingFactor={0.07} enableDamping {...controlsConfig} />
       </Canvas>
     </>
   );
