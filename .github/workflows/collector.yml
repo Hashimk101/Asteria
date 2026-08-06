@@ -2,8 +2,8 @@ name: Asteria Scheduled Data Collector
 
 on:
   schedule:
-    # Runs every 30 minutes
-    - cron: '*/30 * * * *'
+    # Runs daily at 00:30 UTC (shortly after NASA's daily data update)
+    - cron: '30 0 * * *'
   workflow_dispatch: # Allows manual trigger from GitHub UI
 
 jobs:

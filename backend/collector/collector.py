@@ -103,46 +103,51 @@ def run_collector():
 
     print(f"Successfully saved {ast_saved} asteroids and close approaches.", flush=True)
 
-    # 2. Upsert Asteroid Trajectories
+    # 2. Upsert Asteroid Trajectories in bulk
     traj_saved = 0
+    all_asteroid_vec_dicts = []
     for ast in asteroids:
         spk_id = ast.get('spk_id')
         if spk_id and ast.get('vectors'):
             for vec in ast['vectors']:
-                try:
-                    vec_dict = {
-                        'asteroid_id': ast['id'],
-                        'spk_id': spk_id,
-                        'jd': vec['jd'],
-                        'datetime': vec['datetime'],
-                        'x_km': vec['x_km'],
-                        'y_km': vec['y_km'],
-                        'z_km': vec['z_km'],
-                        'vx_kms': vec['vx_kms'],
-                        'vy_kms': vec['vy_kms'],
-                        'vz_kms': vec['vz_kms'],
-                    }
-                    t_stmt = pg_insert(AsteroidTrajectory).values(**vec_dict)
-                    t_stmt = t_stmt.on_conflict_do_update(
-                        index_elements=['spk_id', 'jd'],
-                        set_={
-                            'datetime': vec_dict['datetime'],
-                            'x_km': vec_dict['x_km'],
-                            'y_km': vec_dict['y_km'],
-                            'z_km': vec_dict['z_km'],
-                            'vx_kms': vec_dict['vx_kms'],
-                            'vy_kms': vec_dict['vy_kms'],
-                            'vz_kms': vec_dict['vz_kms'],
-                        }
-                    )
-                    db.execute(t_stmt)
-                    traj_saved += 1
-                except Exception as e:
-                    db.rollback()
-            try:
-                db.commit()
-            except Exception:
-                db.rollback()
+                all_asteroid_vec_dicts.append({
+                    'asteroid_id': ast['id'],
+                    'spk_id': spk_id,
+                    'jd': vec['jd'],
+                    'datetime': vec['datetime'],
+                    'x_km': vec['x_km'],
+                    'y_km': vec['y_km'],
+                    'z_km': vec['z_km'],
+                    'vx_kms': vec['vx_kms'],
+                    'vy_kms': vec['vy_kms'],
+                    'vz_kms': vec['vz_kms'],
+                })
+
+    chunk_size = 500
+    for i in range(0, len(all_asteroid_vec_dicts), chunk_size):
+        chunk = all_asteroid_vec_dicts[i:i + chunk_size]
+        if not chunk:
+            continue
+        try:
+            t_stmt = pg_insert(AsteroidTrajectory).values(chunk)
+            t_stmt = t_stmt.on_conflict_do_update(
+                index_elements=['spk_id', 'jd'],
+                set_={
+                    'datetime': t_stmt.excluded.datetime,
+                    'x_km': t_stmt.excluded.x_km,
+                    'y_km': t_stmt.excluded.y_km,
+                    'z_km': t_stmt.excluded.z_km,
+                    'vx_kms': t_stmt.excluded.vx_kms,
+                    'vy_kms': t_stmt.excluded.vy_kms,
+                    'vz_kms': t_stmt.excluded.vz_kms,
+                }
+            )
+            db.execute(t_stmt)
+            db.commit()
+            traj_saved += len(chunk)
+        except Exception as e:
+            db.rollback()
+            print(f"Warning saving asteroid trajectory batch: {e}", flush=True)
 
     print(f"Successfully saved {traj_saved} trajectory vectors.", flush=True)
 
@@ -175,43 +180,47 @@ def run_collector():
             except Exception as e:
                 db.rollback()
 
-    # 4. Upsert Planet Trajectories
+    # 4. Upsert Planet Trajectories in bulk
     planet_saved = 0
+    all_planet_vec_dicts = []
     for planet_name, planet_vectors in planets_data.items():
         for vec in planet_vectors:
-            try:
-                p_dict = {
-                    'planet_name': planet_name,
-                    'jd': vec['jd'],
-                    'datetime': vec['datetime'],
-                    'x_km': vec['x_km'],
-                    'y_km': vec['y_km'],
-                    'z_km': vec['z_km'],
-                    'vx_kms': vec['vx_kms'],
-                    'vy_kms': vec['vy_kms'],
-                    'vz_kms': vec['vz_kms'],
-                }
-                p_stmt = pg_insert(PlanetTrajectory).values(**p_dict)
-                p_stmt = p_stmt.on_conflict_do_update(
-                    index_elements=['planet_name', 'jd'],
-                    set_={
-                        'datetime': p_dict['datetime'],
-                        'x_km': p_dict['x_km'],
-                        'y_km': p_dict['y_km'],
-                        'z_km': p_dict['z_km'],
-                        'vx_kms': p_dict['vx_kms'],
-                        'vy_kms': p_dict['vy_kms'],
-                        'vz_kms': p_dict['vz_kms'],
-                    }
-                )
-                db.execute(p_stmt)
-                planet_saved += 1
-            except Exception as e:
-                db.rollback()
+            all_planet_vec_dicts.append({
+                'planet_name': planet_name,
+                'jd': vec['jd'],
+                'datetime': vec['datetime'],
+                'x_km': vec['x_km'],
+                'y_km': vec['y_km'],
+                'z_km': vec['z_km'],
+                'vx_kms': vec['vx_kms'],
+                'vy_kms': vec['vy_kms'],
+                'vz_kms': vec['vz_kms'],
+            })
+
+    for i in range(0, len(all_planet_vec_dicts), chunk_size):
+        chunk = all_planet_vec_dicts[i:i + chunk_size]
+        if not chunk:
+            continue
         try:
+            p_stmt = pg_insert(PlanetTrajectory).values(chunk)
+            p_stmt = p_stmt.on_conflict_do_update(
+                index_elements=['planet_name', 'jd'],
+                set_={
+                    'datetime': p_stmt.excluded.datetime,
+                    'x_km': p_stmt.excluded.x_km,
+                    'y_km': p_stmt.excluded.y_km,
+                    'z_km': p_stmt.excluded.z_km,
+                    'vx_kms': p_stmt.excluded.vx_kms,
+                    'vy_kms': p_stmt.excluded.vy_kms,
+                    'vz_kms': p_stmt.excluded.vz_kms,
+                }
+            )
+            db.execute(p_stmt)
             db.commit()
-        except Exception:
+            planet_saved += len(chunk)
+        except Exception as e:
             db.rollback()
+            print(f"Warning saving planet trajectory batch: {e}", flush=True)
 
     # 5. Cleanup outdated trajectories older than yesterday
     print("Step 5/5: Cleaning up outdated trajectory vectors older than yesterday...", flush=True)
