@@ -1,44 +1,25 @@
-import { Suspense, useState, useEffect, useRef } from "react";
-import { Canvas, useFrame, useThree }            from "@react-three/fiber";
-import { OrbitControls, Html }                   from "@react-three/drei";
-import Earth                                     from "./Earth";
-import Sun                                       from "./Sun";
-import Planet                                    from "./Planet";
-import MilkyWay                                  from "./MilkyWay";
-import LoadingScreen                             from "./LoadingScreen";
-import * as THREE                                from "three";
+import { Suspense, useState, useEffect, useRef, useMemo } from "react";
+import { Canvas, useThree }                               from "@react-three/fiber";
+import { OrbitControls, Html }                            from "@react-three/drei";
+import Earth                                              from "./Earth";
+import Sun                                                from "./Sun";
+import Planet                                             from "./Planet";
+import MilkyWay                                           from "./MilkyWay";
+import LoadingScreen                                      from "./LoadingScreen";
+import AsteroidPath                                       from "../scene/AsteroidPath";
+import * as THREE                                         from "three";
 import {
   EARTH_RADIUS_U,
   EARTH_CAM_DISTANCE,
+  KM_TO_UNITS,
   ORBITAL_RADII_AU,
   AU_TO_UNITS,
-  KM_TO_UNITS,
   PLANET_VISUAL_RADII,
 } from "../../lib/constants/scale";
 
-// ─── Build SOLAR_LAYOUT from real data ────────────────────────────────────────
-// Orbital periods from Kepler's third law: T = AU^1.5 years, speed ∝ 1/T
-// Speed values are angular speed in rad/s scaled for Three.js deltaTime (seconds)
-const ORBITAL_SPEEDS = {
-  Mercury: 0.0048,
-  Venus:   0.0035,
-  Earth:   0.0029,
-  Mars:    0.0024,
-  Jupiter: 0.0013,
-  Saturn:  0.0009,
-  Uranus:  0.0006,
-  Neptune: 0.0005,
-};
-
-const SOLAR_LAYOUT = Object.fromEntries(
-  Object.entries(ORBITAL_RADII_AU).map(([name, au]) => [
-    name,
-    {
-      orbitRadius: au * AU_TO_UNITS,           // real proportional distance
-      speed:       ORBITAL_SPEEDS[name],
-      size:        PLANET_VISUAL_RADII[name],  // real proportional radius
-    },
-  ])
+// ─── Real orbital radii in Three.js units ────────────────────────────────────
+const ORBIT_RING_RADII = Object.fromEntries(
+  Object.entries(ORBITAL_RADII_AU).map(([name, au]) => [name, au * AU_TO_UNITS])
 );
 
 const ORBIT_COLORS = {
@@ -52,96 +33,115 @@ const ORBIT_COLORS = {
   Neptune: '#4a6fff',
 };
 
+// ─── Planet size exaggeration for visibility ──────────────────────────────────
+// Real visual radii from scale.js are already exaggerated 1500×
+// We add a minimum floor so tiny planets (Mercury) are still clickable
+const PLANET_RENDER_RADIUS = {
+  Mercury: Math.max(PLANET_VISUAL_RADII.Mercury, 2.5),
+  Venus:   Math.max(PLANET_VISUAL_RADII.Venus,   3.5),
+  Earth:   Math.max(PLANET_VISUAL_RADII.Earth,   4.0),
+  Mars:    Math.max(PLANET_VISUAL_RADII.Mars,     3.0),
+  Jupiter: PLANET_VISUAL_RADII.Jupiter,
+  Saturn:  PLANET_VISUAL_RADII.Saturn,
+  Uranus:  PLANET_VISUAL_RADII.Uranus,
+  Neptune: PLANET_VISUAL_RADII.Neptune,
+};
+
 // ─── Orbit Ring ───────────────────────────────────────────────────────────────
 function OrbitRing({ radius, color }) {
-  const points = [];
-  for (let i = 0; i <= 128; i++) {
-    const a = (i / 128) * Math.PI * 2;
-    points.push(new THREE.Vector3(Math.cos(a) * radius, 0, Math.sin(a) * radius));
-  }
-  const geo = new THREE.BufferGeometry().setFromPoints(points);
+  const geo = useMemo(() => {
+    const pts = [];
+    for (let i = 0; i <= 256; i++) {
+      const a = (i / 256) * Math.PI * 2;
+      pts.push(new THREE.Vector3(Math.cos(a) * radius, 0, Math.sin(a) * radius));
+    }
+    return new THREE.BufferGeometry().setFromPoints(pts);
+  }, [radius]);
+
   return (
     <line geometry={geo}>
-      <lineBasicMaterial color={color} opacity={0.35} transparent linewidth={2} />
+      <lineBasicMaterial color={color} opacity={0.25} transparent />
     </line>
   );
 }
 
-// ─── Deterministic starting angle ─────────────────────────────────────────────
-function getInitialOrbitAngle(name) {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-  return (hash / 0xffffffff) * Math.PI * 2;
-}
-
-// ─── Orbiting Planet ──────────────────────────────────────────────────────────
-function OrbitingPlanet({ name, layout, apiData }) {
-  const groupRef = useRef();
-  const angleRef = useRef(getInitialOrbitAngle(name));
+// ─── Real-position Planet ─────────────────────────────────────────────────────
+// Position comes from API (real heliocentric km), NOT from useFrame animation
+function RealPlanet({ name, apiData }) {
+  const groupRef  = useRef();
   const [hovered, setHovered] = useState(false);
+  const { camera, controls }  = useThree();
 
-  const { camera, controls } = useThree();
-  const isReady = !!controls;
+  // Convert real km → Three.js units
+  const position = useMemo(() => {
+    if (!apiData?.x_km) return null;
+    return new THREE.Vector3(
+      apiData.x_km * KM_TO_UNITS,
+      apiData.z_km * KM_TO_UNITS,   // z → Y up
+      apiData.y_km * KM_TO_UNITS,
+    );
+  }, [apiData]);
 
-  useFrame((_, delta) => {
-    // If API gives live position in km, use that instead of circular orbit
-    if (apiData?.x_km && apiData?.y_km) {
-      if (groupRef.current) {
-        groupRef.current.position.x = apiData.x_km * KM_TO_UNITS;
-        groupRef.current.position.y = (apiData.z_km ?? 0) * KM_TO_UNITS; // ecliptic tilt
-        groupRef.current.position.z = apiData.y_km * KM_TO_UNITS;
-      }
-    } else {
-      // Fallback: circular orbit
-      angleRef.current += delta * layout.speed;
-      if (groupRef.current) {
-        groupRef.current.position.x = Math.cos(angleRef.current) * layout.orbitRadius;
-        groupRef.current.position.y = 0;
-        groupRef.current.position.z = Math.sin(angleRef.current) * layout.orbitRadius;
-      }
-    }
-  });
+  const color  = ORBIT_COLORS[name] ?? '#ffffff';
+  const radius = PLANET_RENDER_RADIUS[name] ?? 4;
 
   const handleDoubleClick = (e) => {
     e.stopPropagation();
-    if (!controls || !groupRef.current) return;
-    const pos = groupRef.current.position;
-    const s   = layout.size;
-    controls.target.set(pos.x, pos.y, pos.z);
-    camera.position.set(pos.x + s * 8, pos.y + s * 4, pos.z + s * 8);
+    if (!controls || !position) return;
+    controls.target.copy(position);
+    camera.position.set(
+      position.x + radius * 8,
+      position.y + radius * 4,
+      position.z + radius * 8,
+    );
     controls.update();
   };
 
-  const handlePointerOver = (e) => { e.stopPropagation(); setHovered(true);  document.body.style.cursor = 'pointer'; };
-  const handlePointerOut  = ()  => {                      setHovered(false); document.body.style.cursor = 'auto';    };
+  // While API data is loading, render at approximate orbital position
+  const fallbackPos = useMemo(() => {
+    const r = ORBIT_RING_RADII[name] ?? 100;
+    // Deterministic angle from name hash so it doesn't jump on re-render
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+    const angle = (hash / 0xffffffff) * Math.PI * 2;
+    return new THREE.Vector3(Math.cos(angle) * r, 0, Math.sin(angle) * r);
+  }, [name]);
 
-  const planetData = { name, x_km: 0, y_km: 0, z_km: 0, ...(apiData ?? {}) };
-  const color      = ORBIT_COLORS[name] ?? '#ffffff';
+  const pos = position ?? fallbackPos;
 
   return (
     <>
-      <OrbitRing radius={layout.orbitRadius} color={color} />
-      <group ref={groupRef}>
-        {/* Hit sphere — 2.5x visual radius for easy pointer detection */}
+      <OrbitRing radius={ORBIT_RING_RADII[name] ?? 100} color={color} />
+      <group ref={groupRef} position={pos}>
+        {/* Invisible hit target — larger than visual sphere for easy clicking */}
         <mesh
-          onPointerOver={handlePointerOver}
-          onPointerOut={handlePointerOut}
-          onDoubleClick={isReady ? handleDoubleClick : undefined}
+          onPointerOver={e => { e.stopPropagation(); setHovered(true);  document.body.style.cursor = 'pointer'; }}
+          onPointerOut={()  => { setHovered(false); document.body.style.cursor = 'auto'; }}
+          onDoubleClick={handleDoubleClick}
         >
-          <sphereGeometry args={[layout.size * 2.5, 16, 16]} />
+          <sphereGeometry args={[radius * 2.5, 8, 8]} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
 
-        <Planet data={planetData} sizeOverride={layout.size} />
+        <Planet
+          data={{ name, x_km: 0, y_km: 0, z_km: 0, ...(apiData ?? {}) }}
+          sizeOverride={radius}
+        />
 
         {hovered && (
-          <Html center distanceFactor={80} style={{ pointerEvents: 'none' }}>
+          <Html center distanceFactor={200} style={{ pointerEvents: 'none' }}>
             <div style={{
-              background: 'rgba(5,3,0,0.88)', border: `1px solid ${color}55`,
-              borderRadius: '4px', padding: '5px 12px', color,
-              fontSize: '11px', fontFamily: 'monospace', letterSpacing: '0.15em',
-              whiteSpace: 'nowrap', textTransform: 'uppercase',
-              boxShadow: `0 0 12px ${color}33`,
+              background:    'rgba(5,3,0,0.88)',
+              border:        `1px solid ${color}55`,
+              borderRadius:  '4px',
+              padding:       '5px 12px',
+              color,
+              fontSize:      '11px',
+              fontFamily:    'monospace',
+              letterSpacing: '0.15em',
+              whiteSpace:    'nowrap',
+              textTransform: 'uppercase',
+              boxShadow:     `0 0 12px ${color}33`,
             }}>
               {name}
             </div>
@@ -152,22 +152,170 @@ function OrbitingPlanet({ name, layout, apiData }) {
   );
 }
 
+// ─── Asteroid Selector UI ─────────────────────────────────────────────────────
+function AsteroidSelector({ asteroids, loadingList, selectedId, onChange, trajectoryLoading }) {
+  return (
+    <div style={{
+      position:       'fixed',
+      top:            '110px',
+      right:          '20px',
+      zIndex:         150,
+      display:        'flex',
+      flexDirection:  'column',
+      gap:            '0.4rem',
+      background:     'rgba(8,5,0,0.85)',
+      border:         '1px solid rgba(196,140,64,0.35)',
+      borderRadius:   '4px',
+      padding:        '10px 14px',
+      backdropFilter: 'blur(12px)',
+      minWidth:       '220px',
+    }}>
+      <label style={{ color: '#888', fontSize: '9px', letterSpacing: '0.2em', fontFamily: 'monospace', textTransform: 'uppercase' }}>
+        Asteroid Tracker
+      </label>
+
+      <select
+        value={selectedId ?? ''}
+        onChange={e => onChange(e.target.value || null)}
+        disabled={loadingList}
+        style={{
+          background:  'rgba(255,255,255,0.05)',
+          color:       '#d4944a',
+          border:      '1px solid rgba(196,140,64,0.25)',
+          borderRadius:'3px',
+          padding:     '6px 8px',
+          fontSize:    '11px',
+          fontFamily:  'monospace',
+          cursor:      'pointer',
+          outline:     'none',
+          width:       '100%',
+        }}
+      >
+        <option value="" style={{ background: '#0a0805' }}>
+          {loadingList ? 'Loading...' : '— Select asteroid —'}
+        </option>
+        {asteroids.map(a => (
+          <option key={a.spk_id} value={a.spk_id} style={{ background: '#0a0805' }}>
+            {a.name}{a.is_hazardous ? ' ⚠' : ''}
+          </option>
+        ))}
+      </select>
+
+      {trajectoryLoading && (
+        <span style={{ color: '#888', fontSize: '10px', fontFamily: 'monospace' }}>
+          Fetching trajectory…
+        </span>
+      )}
+      {selectedId && !trajectoryLoading && (
+        <button
+          onClick={() => onChange(null)}
+          style={{
+            background:   'transparent',
+            color:        '#ff6b6b',
+            border:       '1px solid rgba(255,107,107,0.25)',
+            borderRadius: '3px',
+            padding:      '4px',
+            fontSize:     '10px',
+            fontFamily:   'monospace',
+            cursor:       'pointer',
+            letterSpacing:'0.1em',
+          }}
+        >
+          ✕ CLEAR
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── Zoom-to-asteroid button ──────────────────────────────────────────────────
+// Lives inside Canvas so it can access useThree
+function ZoomToAsteroid({ vectors }) {
+  const { camera, controls } = useThree();
+
+  const handleZoom = () => {
+    if (!vectors.length || !controls) return;
+
+    // Find current position vector
+    const now  = Date.now();
+    let best   = 0;
+    let diff   = Infinity;
+    vectors.forEach((v, i) => {
+      const d = Math.abs(new Date(v.datetime).getTime() - now);
+      if (d < diff) { diff = d; best = i; }
+    });
+
+    const v   = vectors[best];
+    const pos = new THREE.Vector3(
+      v.x_km * KM_TO_UNITS,
+      v.z_km * KM_TO_UNITS,
+      v.y_km * KM_TO_UNITS,
+    );
+
+    controls.target.copy(pos);
+    camera.position.set(pos.x + 30, pos.y + 15, pos.z + 30);
+    controls.update();
+  };
+
+  return (
+    <Html fullscreen style={{ pointerEvents: 'none' }}>
+      <button
+        onClick={handleZoom}
+        style={{
+          position:      'fixed',
+          bottom:        '30px',
+          right:         '20px',
+          pointerEvents: 'all',
+          background:    'rgba(8,5,0,0.85)',
+          border:        '1px solid rgba(68,170,255,0.4)',
+          borderRadius:  '4px',
+          color:         '#44aaff',
+          padding:       '8px 14px',
+          fontSize:      '10px',
+          fontFamily:    'monospace',
+          letterSpacing: '0.15em',
+          cursor:        'pointer',
+          backdropFilter:'blur(12px)',
+        }}
+      >
+        ◎ LOCATE ASTEROID
+      </button>
+    </Html>
+  );
+}
+
 // ─── Solar System Scene ───────────────────────────────────────────────────────
-function SolarSystemContent({ apiPlanets }) {
+function SolarSystemContent({ apiPlanets, asteroidVectors, asteroidHazardous, asteroidMeta }) {
   return (
     <>
       <ambientLight intensity={0.35} color="#1a1a4a" />
       <hemisphereLight skyColor="#ffe8c0" groundColor="#1a2a4a" intensity={0.45} />
       <MilkyWay />
-      <Sun size={PLANET_VISUAL_RADII.Sun} />
-      {Object.entries(SOLAR_LAYOUT).map(([name, layout]) => (
-        <OrbitingPlanet key={name} name={name} layout={layout} apiData={apiPlanets[name]} />
+      <Sun />
+
+      {Object.keys(ORBIT_RING_RADII).map(name => (
+        <RealPlanet
+          key={name}
+          name={name}
+          apiData={apiPlanets[name]}
+        />
       ))}
+
+      {asteroidVectors.length > 0 && (
+        <>
+          <AsteroidPath
+            vectors={asteroidVectors}
+            isHazardous={asteroidHazardous}
+            asteroidMeta={asteroidMeta}
+          />
+          <ZoomToAsteroid vectors={asteroidVectors} />
+        </>
+      )}
     </>
   );
 }
 
-// ─── Earth Close-Up Scene ────────────────────────────────────────────────────
+// ─── Earth Close-Up Scene ─────────────────────────────────────────────────────
 function EarthContent({ onEarthLoaded }) {
   return (
     <>
@@ -185,62 +333,183 @@ function EarthContent({ onEarthLoaded }) {
 // ─── Mode Toggle ──────────────────────────────────────────────────────────────
 function ViewToggle({ mode, onToggle }) {
   return (
-    <button onClick={onToggle} className="mono" style={{
-      position: "fixed", top: "60px", right: "20px", zIndex: 150,
-      background: "rgba(8,5,0,0.85)", border: "1px solid rgba(196,140,64,0.35)",
-      borderRadius: "4px", color: "#d4944a", padding: "10px 16px",
-      fontSize: "10px", letterSpacing: "0.2em", textTransform: "uppercase",
-      cursor: "pointer", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-      transition: "all 0.25s ease",
-    }}
-      onMouseEnter={e => { e.currentTarget.style.background = "rgba(196,140,64,0.12)"; e.currentTarget.style.borderColor = "rgba(196,140,64,0.6)"; e.currentTarget.style.color = "#f0d4a0"; }}
-      onMouseLeave={e => { e.currentTarget.style.background = "rgba(8,5,0,0.85)";      e.currentTarget.style.borderColor = "rgba(196,140,64,0.35)"; e.currentTarget.style.color = "#d4944a"; }}
+    <button
+      onClick={onToggle}
+      style={{
+        position:             'fixed',
+        top:                  '60px',
+        right:                '20px',
+        zIndex:               150,
+        background:           'rgba(8,5,0,0.85)',
+        border:               '1px solid rgba(196,140,64,0.35)',
+        borderRadius:         '4px',
+        color:                '#d4944a',
+        padding:              '10px 16px',
+        fontSize:             '10px',
+        letterSpacing:        '0.2em',
+        textTransform:        'uppercase',
+        cursor:               'pointer',
+        backdropFilter:       'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        transition:           'all 0.25s ease',
+        fontFamily:           'monospace',
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.background  = 'rgba(196,140,64,0.12)';
+        e.currentTarget.style.borderColor = 'rgba(196,140,64,0.6)';
+        e.currentTarget.style.color       = '#f0d4a0';
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.background  = 'rgba(8,5,0,0.85)';
+        e.currentTarget.style.borderColor = 'rgba(196,140,64,0.35)';
+        e.currentTarget.style.color       = '#d4944a';
+      }}
     >
-      {mode === "earth" ? "🌌 SOLAR SYSTEM" : "🌍 EARTH VIEW"}
+      {mode === 'earth' ? '⊙ SOLAR SYSTEM' : '◎ EARTH VIEW'}
     </button>
   );
 }
 
 // ─── Main Scene ───────────────────────────────────────────────────────────────
 export default function Scene() {
-  const [earthReady, setEarthReady] = useState(false);
-  const [mode, setMode]             = useState("earth");
-  const [apiPlanets, setApiPlanets] = useState({});
+  const [earthReady,          setEarthReady]          = useState(false);
+  const [mode,                setMode]                = useState('earth');
+  const [apiPlanets,          setApiPlanets]          = useState({});
 
+  const [asteroidList,        setAsteroidList]        = useState([]);
+  const [asteroidListLoading, setAsteroidListLoading] = useState(false);
+  const [selectedAsteroidId,  setSelectedAsteroidId]  = useState(null);
+  const [asteroidVectors,     setAsteroidVectors]     = useState([]);
+  const [asteroidMeta,        setAsteroidMeta]        = useState(null);
+  const [asteroidHazardous,   setAsteroidHazardous]   = useState(false);
+  const [trajectoryLoading,   setTrajectoryLoading]   = useState(false);
+
+  // Fetch planets once on solar mode entry
   useEffect(() => {
-    if (mode === "solar" && Object.keys(apiPlanets).length === 0) {
-      fetch("https://asteria.fastapicloud.dev/planets")
+    if (mode === 'solar' && Object.keys(apiPlanets).length === 0) {
+      fetch('https://asteria.fastapicloud.dev/planets')
         .then(r => r.json())
         .then(d => setApiPlanets(d.planets ?? d))
-        .catch(err => console.error("❌ planets fetch failed:", err));
+        .catch(err => console.error('❌ planets fetch failed:', err));
     }
-  }, [mode]);
+  }, [mode, apiPlanets]);
 
-  const cameraConfig = mode === "earth"
+  // Fetch asteroid list once on solar mode entry
+  useEffect(() => {
+    if (mode === 'solar' && asteroidList.length === 0) {
+      const loadingTimer = setTimeout(() => setAsteroidListLoading(true), 0);
+      fetch('https://asteria.fastapicloud.dev/asteroids?page=1&limit=100')
+        .then(r => r.json())
+        .then(d => { setAsteroidList(d); setAsteroidListLoading(false); })
+        .catch(() => setAsteroidListLoading(false));
+      return () => clearTimeout(loadingTimer);
+    }
+  }, [mode, asteroidList.length]);
+
+  // Fetch trajectory + meta when selection changes
+  useEffect(() => {
+    if (!selectedAsteroidId) {
+      const resetTimer = setTimeout(() => {
+        setAsteroidVectors([]);
+        setAsteroidMeta(null);
+        setAsteroidHazardous(false);
+        setTrajectoryLoading(false);
+      }, 0);
+      return () => clearTimeout(resetTimer);
+    }
+
+    const loadingTimer = setTimeout(() => setTrajectoryLoading(true), 0);
+    let cancelled = false;
+
+    // Fetch trajectory and asteroid detail in parallel
+    Promise.all([
+      fetch(`https://asteria.fastapicloud.dev/trajectory/${selectedAsteroidId}`).then(r => r.json()),
+      fetch(`https://asteria.fastapicloud.dev/asteroids/${selectedAsteroidId}`).then(r => r.json()),
+    ])
+      .then(([traj, meta]) => {
+        if (cancelled) return;
+        setAsteroidVectors(traj.vectors ?? []);
+        setAsteroidMeta(meta);
+        setAsteroidHazardous(meta?.is_hazardous ?? false);
+        setTrajectoryLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) setTrajectoryLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(loadingTimer);
+    };
+  }, [selectedAsteroidId, asteroidList]);
+
+  const cameraConfig = mode === 'earth'
     ? { position: [0, EARTH_RADIUS_U * 1.2, EARTH_CAM_DISTANCE], fov: 45, near: 0.0001, far: 50_000 }
-    : { position: [0, 800, 2000], fov: 60, near: 0.1, far: 50_000 };
-    // ↑ far bumped to 50k — Neptune is now at ~3006 units
+    // Solar: start zoomed out enough to see Neptune (~3006 units)
+    : { position: [0, 600, 1200], fov: 60, near: 0.5, far: 15_000, logarithmicDepthBuffer: true };
 
-  const controlsConfig = mode === "earth"
+  const controlsConfig = mode === 'earth'
     ? { minDistance: EARTH_RADIUS_U * 1.5, maxDistance: EARTH_RADIUS_U * 80, rotateSpeed: 0.45, zoomSpeed: 0.7 }
-    : { minDistance: 10, maxDistance: 8000, rotateSpeed: 0.5, zoomSpeed: 1.2, minPolarAngle: 0, maxPolarAngle: Math.PI / 1.8 };
+    : {
+        minDistance:    5,
+        maxDistance:    8000,    // can zoom out past Neptune
+        rotateSpeed:    0.5,
+        zoomSpeed:      1.2,
+        minPolarAngle:  0,
+        maxPolarAngle:  Math.PI / 1.8,
+      };
 
   return (
     <>
       <LoadingScreen ready={earthReady} />
-      <ViewToggle mode={mode} onToggle={() => setMode(m => m === "earth" ? "solar" : "earth")} />
+
+      <ViewToggle
+        mode={mode}
+        onToggle={() => setMode(m => m === 'earth' ? 'solar' : 'earth')}
+      />
+
+      {mode === 'solar' && (
+        <AsteroidSelector
+          asteroids={asteroidList}
+          loadingList={asteroidListLoading}
+          selectedId={selectedAsteroidId}
+          trajectoryLoading={trajectoryLoading}
+          onChange={setSelectedAsteroidId}
+        />
+      )}
+
       <Canvas
         key={mode}
         camera={cameraConfig}
-        style={{ width: "100%", height: "100%" }}
-        gl={{ antialias: true, alpha: false, powerPreference: "high-performance", toneMapping: 3, toneMappingExposure: mode === "solar" ? 0.85 : 1.1 }}
-        onCreated={({ gl }) => gl.setClearColor("#010205")}
+        style={{ width: '100%', height: '100%' }}
+        gl={{
+          antialias:           true,
+          alpha:               false,
+          powerPreference:     'high-performance',
+          toneMapping:         3,
+          toneMappingExposure: mode === 'solar' ? 0.85 : 1.1,
+          logarithmicDepthBuffer: mode === 'solar',  // prevents z-fighting at large scales
+        }}
+        onCreated={({ gl }) => gl.setClearColor('#010205')}
       >
-        {mode === "earth"
+        {mode === 'earth'
           ? <EarthContent onEarthLoaded={() => setEarthReady(true)} />
-          : <SolarSystemContent apiPlanets={apiPlanets} />
+          : <SolarSystemContent
+              apiPlanets={apiPlanets}
+              asteroidVectors={asteroidVectors}
+              asteroidHazardous={asteroidHazardous}
+              asteroidMeta={asteroidMeta}
+            />
         }
-        <OrbitControls makeDefault enablePan={false} enableZoom dampingFactor={0.07} enableDamping {...controlsConfig} />
+        <OrbitControls
+          makeDefault
+          enablePan={true}
+          enableZoom={true}
+          enableRotate={true}
+          dampingFactor={0.07}
+          enableDamping={true}
+          {...controlsConfig}
+        />
       </Canvas>
     </>
   );
