@@ -1,13 +1,13 @@
-import { Suspense, useState, useEffect, useRef, useMemo } from "react";
-import { Canvas, useThree }                               from "@react-three/fiber";
-import { OrbitControls, Html }                            from "@react-three/drei";
-import Earth                                              from "./Earth";
-import Sun                                                from "./Sun";
-import Planet                                             from "./Planet";
-import MilkyWay                                           from "./MilkyWay";
-import LoadingScreen                                      from "./LoadingScreen";
-import AsteroidPath                                       from "../scene/AsteroidPath";
-import * as THREE                                         from "three";
+import { Suspense, useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { Canvas, useThree }                                             from "@react-three/fiber";
+import { OrbitControls, Html }                                          from "@react-three/drei";
+import Earth                                                            from "./Earth";
+import Sun                                                              from "./Sun";
+import Planet                                                           from "./Planet";
+import MilkyWay                                                         from "./MilkyWay";
+import LoadingScreen                                                    from "./LoadingScreen";
+import AsteroidPath                                                     from "../scene/AsteroidPath";
+import * as THREE                                                       from "three";
 import {
   EARTH_RADIUS_U,
   EARTH_CAM_DISTANCE,
@@ -17,7 +17,7 @@ import {
   PLANET_VISUAL_RADII,
 } from "../../lib/constants/scale";
 
-// ─── Real orbital radii in Three.js units ────────────────────────────────────
+// ─── Real orbital radii in Three.js units ─────────────────────────────────────
 const ORBIT_RING_RADII = Object.fromEntries(
   Object.entries(ORBITAL_RADII_AU).map(([name, au]) => [name, au * AU_TO_UNITS])
 );
@@ -33,9 +33,6 @@ const ORBIT_COLORS = {
   Neptune: '#4a6fff',
 };
 
-// ─── Planet size exaggeration for visibility ──────────────────────────────────
-// Real visual radii from scale.js are already exaggerated 1500×
-// We add a minimum floor so tiny planets (Mercury) are still clickable
 const PLANET_RENDER_RADIUS = {
   Mercury: Math.max(PLANET_VISUAL_RADII.Mercury, 2.5),
   Venus:   Math.max(PLANET_VISUAL_RADII.Venus,   3.5),
@@ -66,18 +63,16 @@ function OrbitRing({ radius, color }) {
 }
 
 // ─── Real-position Planet ─────────────────────────────────────────────────────
-// Position comes from API (real heliocentric km), NOT from useFrame animation
 function RealPlanet({ name, apiData }) {
-  const groupRef  = useRef();
+  const groupRef             = useRef();
   const [hovered, setHovered] = useState(false);
-  const { camera, controls }  = useThree();
+  const { camera, controls } = useThree();
 
-  // Convert real km → Three.js units
   const position = useMemo(() => {
     if (!apiData?.x_km) return null;
     return new THREE.Vector3(
       apiData.x_km * KM_TO_UNITS,
-      apiData.z_km * KM_TO_UNITS,   // z → Y up
+      apiData.z_km * KM_TO_UNITS,
       apiData.y_km * KM_TO_UNITS,
     );
   }, [apiData]);
@@ -97,10 +92,9 @@ function RealPlanet({ name, apiData }) {
     controls.update();
   };
 
-  // While API data is loading, render at approximate orbital position
+  // Deterministic fallback position on the real orbit ring while API loads
   const fallbackPos = useMemo(() => {
     const r = ORBIT_RING_RADII[name] ?? 100;
-    // Deterministic angle from name hash so it doesn't jump on re-render
     let hash = 0;
     for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
     const angle = (hash / 0xffffffff) * Math.PI * 2;
@@ -113,10 +107,9 @@ function RealPlanet({ name, apiData }) {
     <>
       <OrbitRing radius={ORBIT_RING_RADII[name] ?? 100} color={color} />
       <group ref={groupRef} position={pos}>
-        {/* Invisible hit target — larger than visual sphere for easy clicking */}
         <mesh
           onPointerOver={e => { e.stopPropagation(); setHovered(true);  document.body.style.cursor = 'pointer'; }}
-          onPointerOut={()  => { setHovered(false); document.body.style.cursor = 'auto'; }}
+          onPointerOut={()  => { setHovered(false);  document.body.style.cursor = 'auto'; }}
           onDoubleClick={handleDoubleClick}
         >
           <sphereGeometry args={[radius * 2.5, 8, 8]} />
@@ -170,7 +163,10 @@ function AsteroidSelector({ asteroids, loadingList, selectedId, onChange, trajec
       backdropFilter: 'blur(12px)',
       minWidth:       '220px',
     }}>
-      <label style={{ color: '#888', fontSize: '9px', letterSpacing: '0.2em', fontFamily: 'monospace', textTransform: 'uppercase' }}>
+      <label style={{
+        color: '#888', fontSize: '9px', letterSpacing: '0.2em',
+        fontFamily: 'monospace', textTransform: 'uppercase',
+      }}>
         Asteroid Tracker
       </label>
 
@@ -179,16 +175,16 @@ function AsteroidSelector({ asteroids, loadingList, selectedId, onChange, trajec
         onChange={e => onChange(e.target.value || null)}
         disabled={loadingList}
         style={{
-          background:  'rgba(255,255,255,0.05)',
-          color:       '#d4944a',
-          border:      '1px solid rgba(196,140,64,0.25)',
-          borderRadius:'3px',
-          padding:     '6px 8px',
-          fontSize:    '11px',
-          fontFamily:  'monospace',
-          cursor:      'pointer',
-          outline:     'none',
-          width:       '100%',
+          background:   'rgba(255,255,255,0.05)',
+          color:        '#d4944a',
+          border:       '1px solid rgba(196,140,64,0.25)',
+          borderRadius: '3px',
+          padding:      '6px 8px',
+          fontSize:     '11px',
+          fontFamily:   'monospace',
+          cursor:       'pointer',
+          outline:      'none',
+          width:        '100%',
         }}
       >
         <option value="" style={{ background: '#0a0805' }}>
@@ -210,15 +206,15 @@ function AsteroidSelector({ asteroids, loadingList, selectedId, onChange, trajec
         <button
           onClick={() => onChange(null)}
           style={{
-            background:   'transparent',
-            color:        '#ff6b6b',
-            border:       '1px solid rgba(255,107,107,0.25)',
-            borderRadius: '3px',
-            padding:      '4px',
-            fontSize:     '10px',
-            fontFamily:   'monospace',
-            cursor:       'pointer',
-            letterSpacing:'0.1em',
+            background:    'transparent',
+            color:         '#ff6b6b',
+            border:        '1px solid rgba(255,107,107,0.25)',
+            borderRadius:  '3px',
+            padding:       '4px',
+            fontSize:      '10px',
+            fontFamily:    'monospace',
+            cursor:        'pointer',
+            letterSpacing: '0.1em',
           }}
         >
           ✕ CLEAR
@@ -228,18 +224,15 @@ function AsteroidSelector({ asteroids, loadingList, selectedId, onChange, trajec
   );
 }
 
-// ─── Zoom-to-asteroid button ──────────────────────────────────────────────────
-// Lives inside Canvas so it can access useThree
-function ZoomToAsteroid({ vectors }) {
-  const { camera, controls } = useThree();
+// ─── Locate Asteroid Button (outside Canvas) ──────────────────────────────────
+// Uses imperative refs to camera + controls — no useThree needed
+function LocateAsteroidButton({ vectors, cameraRef, controlRef }) {
+  const handleLocate = useCallback(() => {
+    if (!vectors.length || !cameraRef.current || !controlRef.current) return;
 
-  const handleZoom = () => {
-    if (!vectors.length || !controls) return;
-
-    // Find current position vector
-    const now  = Date.now();
-    let best   = 0;
-    let diff   = Infinity;
+    const now = Date.now();
+    let best  = 0;
+    let diff  = Infinity;
     vectors.forEach((v, i) => {
       const d = Math.abs(new Date(v.datetime).getTime() - now);
       if (d < diff) { diff = d; best = i; }
@@ -252,35 +245,49 @@ function ZoomToAsteroid({ vectors }) {
       v.y_km * KM_TO_UNITS,
     );
 
-    controls.target.copy(pos);
-    camera.position.set(pos.x + 30, pos.y + 15, pos.z + 30);
-    controls.update();
-  };
+    // Smooth snap: set target then offset camera
+    controlRef.current.target.copy(pos);
+    cameraRef.current.position.set(pos.x + 25, pos.y + 12, pos.z + 25);
+    controlRef.current.update();
+  }, [vectors, cameraRef, controlRef]);
+
+  if (!vectors.length) return null;
 
   return (
-    <Html fullscreen style={{ pointerEvents: 'none' }}>
-      <button
-        onClick={handleZoom}
-        style={{
-          position:      'fixed',
-          bottom:        '30px',
-          right:         '20px',
-          pointerEvents: 'all',
-          background:    'rgba(8,5,0,0.85)',
-          border:        '1px solid rgba(68,170,255,0.4)',
-          borderRadius:  '4px',
-          color:         '#44aaff',
-          padding:       '8px 14px',
-          fontSize:      '10px',
-          fontFamily:    'monospace',
-          letterSpacing: '0.15em',
-          cursor:        'pointer',
-          backdropFilter:'blur(12px)',
-        }}
-      >
-        ◎ LOCATE ASTEROID
-      </button>
-    </Html>
+    <button
+      onClick={handleLocate}
+      style={{
+        position:             'fixed',
+        bottom:               '30px',
+        right:                '20px',
+        zIndex:               150,
+        background:           'rgba(8,5,0,0.85)',
+        border:               '1px solid rgba(68,170,255,0.4)',
+        borderRadius:         '4px',
+        color:                '#44aaff',
+        padding:              '10px 16px',
+        fontSize:             '10px',
+        fontFamily:           'monospace',
+        letterSpacing:        '0.2em',
+        textTransform:        'uppercase',
+        cursor:               'pointer',
+        backdropFilter:       'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        transition:           'all 0.25s ease',
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.background  = 'rgba(68,170,255,0.1)';
+        e.currentTarget.style.borderColor = 'rgba(68,170,255,0.7)';
+        e.currentTarget.style.color       = '#88ccff';
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.background  = 'rgba(8,5,0,0.85)';
+        e.currentTarget.style.borderColor = 'rgba(68,170,255,0.4)';
+        e.currentTarget.style.color       = '#44aaff';
+      }}
+    >
+      ◎ LOCATE ASTEROID
+    </button>
   );
 }
 
@@ -302,14 +309,11 @@ function SolarSystemContent({ apiPlanets, asteroidVectors, asteroidHazardous, as
       ))}
 
       {asteroidVectors.length > 0 && (
-        <>
-          <AsteroidPath
-            vectors={asteroidVectors}
-            isHazardous={asteroidHazardous}
-            asteroidMeta={asteroidMeta}
-          />
-          <ZoomToAsteroid vectors={asteroidVectors} />
-        </>
+        <AsteroidPath
+          vectors={asteroidVectors}
+          isHazardous={asteroidHazardous}
+          asteroidMeta={asteroidMeta}
+        />
       )}
     </>
   );
@@ -372,19 +376,22 @@ function ViewToggle({ mode, onToggle }) {
 
 // ─── Main Scene ───────────────────────────────────────────────────────────────
 export default function Scene() {
-  const [earthReady,          setEarthReady]          = useState(false);
-  const [mode,                setMode]                = useState('earth');
-  const [apiPlanets,          setApiPlanets]          = useState({});
+  const [earthReady,          setEarthReady]         = useState(false);
+  const [mode,                setMode]               = useState('earth');
+  const [apiPlanets,          setApiPlanets]         = useState({});
+  const [asteroidList,        setAsteroidList]       = useState([]);
+  const [asteroidListLoading, setAsteroidListLoading]= useState(false);
+  const [selectedAsteroidId,  setSelectedAsteroidId] = useState(null);
+  const [asteroidVectors,     setAsteroidVectors]    = useState([]);
+  const [asteroidMeta,        setAsteroidMeta]       = useState(null);
+  const [asteroidHazardous,   setAsteroidHazardous]  = useState(false);
+  const [trajectoryLoading,   setTrajectoryLoading]  = useState(false);
 
-  const [asteroidList,        setAsteroidList]        = useState([]);
-  const [asteroidListLoading, setAsteroidListLoading] = useState(false);
-  const [selectedAsteroidId,  setSelectedAsteroidId]  = useState(null);
-  const [asteroidVectors,     setAsteroidVectors]     = useState([]);
-  const [asteroidMeta,        setAsteroidMeta]        = useState(null);
-  const [asteroidHazardous,   setAsteroidHazardous]   = useState(false);
-  const [trajectoryLoading,   setTrajectoryLoading]   = useState(false);
+  // ── Imperative refs for camera control from outside Canvas ────────────────
+  const cameraRef  = useRef(null);
+  const controlRef = useRef(null);
 
-  // Fetch planets once on solar mode entry
+  // ── Fetch planets once on solar mode entry ────────────────────────────────
   useEffect(() => {
     if (mode === 'solar' && Object.keys(apiPlanets).length === 0) {
       fetch('https://asteria.fastapicloud.dev/planets')
@@ -394,19 +401,18 @@ export default function Scene() {
     }
   }, [mode, apiPlanets]);
 
-  // Fetch asteroid list once on solar mode entry
+  // ── Fetch asteroid list once on solar mode entry ──────────────────────────
   useEffect(() => {
-    if (mode === 'solar' && asteroidList.length === 0) {
-      const loadingTimer = setTimeout(() => setAsteroidListLoading(true), 0);
-      fetch('https://asteria.fastapicloud.dev/asteroids?page=1&limit=100')
-        .then(r => r.json())
-        .then(d => { setAsteroidList(d); setAsteroidListLoading(false); })
-        .catch(() => setAsteroidListLoading(false));
-      return () => clearTimeout(loadingTimer);
-    }
+    if (mode !== 'solar' || asteroidList.length > 0) return;
+    const loadingTimer = setTimeout(() => setAsteroidListLoading(true), 0);
+    fetch('https://asteria.fastapicloud.dev/asteroids?page=1&limit=100')
+      .then(r => r.json())
+      .then(d => { setAsteroidList(d); setAsteroidListLoading(false); })
+      .catch(()  => setAsteroidListLoading(false));
+    return () => clearTimeout(loadingTimer);
   }, [mode, asteroidList.length]);
 
-  // Fetch trajectory + meta when selection changes
+  // ── Fetch trajectory + meta when selection changes ────────────────────────
   useEffect(() => {
     if (!selectedAsteroidId) {
       const resetTimer = setTimeout(() => {
@@ -418,10 +424,9 @@ export default function Scene() {
       return () => clearTimeout(resetTimer);
     }
 
-    const loadingTimer = setTimeout(() => setTrajectoryLoading(true), 0);
     let cancelled = false;
+    const loadingTimer = setTimeout(() => setTrajectoryLoading(true), 0);
 
-    // Fetch trajectory and asteroid detail in parallel
     Promise.all([
       fetch(`https://asteria.fastapicloud.dev/trajectory/${selectedAsteroidId}`).then(r => r.json()),
       fetch(`https://asteria.fastapicloud.dev/asteroids/${selectedAsteroidId}`).then(r => r.json()),
@@ -433,31 +438,22 @@ export default function Scene() {
         setAsteroidHazardous(meta?.is_hazardous ?? false);
         setTrajectoryLoading(false);
       })
-      .catch(() => {
-        if (!cancelled) setTrajectoryLoading(false);
-      });
+      .catch(() => { if (!cancelled) setTrajectoryLoading(false); });
 
     return () => {
       cancelled = true;
       clearTimeout(loadingTimer);
     };
-  }, [selectedAsteroidId, asteroidList]);
+  }, [selectedAsteroidId]);            // ← asteroidList removed from deps (not needed)
 
+  // ── Camera configs ────────────────────────────────────────────────────────
   const cameraConfig = mode === 'earth'
     ? { position: [0, EARTH_RADIUS_U * 1.2, EARTH_CAM_DISTANCE], fov: 45, near: 0.0001, far: 50_000 }
-    // Solar: start zoomed out enough to see Neptune (~3006 units)
-    : { position: [0, 600, 1200], fov: 60, near: 0.5, far: 15_000, logarithmicDepthBuffer: true };
+    : { position: [0, 600, 1200], fov: 60, near: 0.5, far: 15_000 };
 
   const controlsConfig = mode === 'earth'
     ? { minDistance: EARTH_RADIUS_U * 1.5, maxDistance: EARTH_RADIUS_U * 80, rotateSpeed: 0.45, zoomSpeed: 0.7 }
-    : {
-        minDistance:    5,
-        maxDistance:    8000,    // can zoom out past Neptune
-        rotateSpeed:    0.5,
-        zoomSpeed:      1.2,
-        minPolarAngle:  0,
-        maxPolarAngle:  Math.PI / 1.8,
-      };
+    : { minDistance: 5, maxDistance: 8000, rotateSpeed: 0.5, zoomSpeed: 1.2, minPolarAngle: 0, maxPolarAngle: Math.PI / 1.8 };
 
   return (
     <>
@@ -478,19 +474,31 @@ export default function Scene() {
         />
       )}
 
+      {/* Locate button — outside Canvas, uses imperative cameraRef/controlRef */}
+      {mode === 'solar' && (
+        <LocateAsteroidButton
+          vectors={asteroidVectors}
+          cameraRef={cameraRef}
+          controlRef={controlRef}
+        />
+      )}
+
       <Canvas
         key={mode}
         camera={cameraConfig}
         style={{ width: '100%', height: '100%' }}
         gl={{
-          antialias:           true,
-          alpha:               false,
-          powerPreference:     'high-performance',
-          toneMapping:         3,
-          toneMappingExposure: mode === 'solar' ? 0.85 : 1.1,
-          logarithmicDepthBuffer: mode === 'solar',  // prevents z-fighting at large scales
+          antialias:              true,
+          alpha:                  false,
+          powerPreference:        'high-performance',
+          toneMapping:            3,
+          toneMappingExposure:    mode === 'solar' ? 0.85 : 1.1,
+          logarithmicDepthBuffer: mode === 'solar',
         }}
-        onCreated={({ gl }) => gl.setClearColor('#010205')}
+        onCreated={({ gl, camera }) => {
+          gl.setClearColor('#010205');
+          cameraRef.current = camera;   // ← grab camera imperatively
+        }}
       >
         {mode === 'earth'
           ? <EarthContent onEarthLoaded={() => setEarthReady(true)} />
@@ -501,7 +509,9 @@ export default function Scene() {
               asteroidMeta={asteroidMeta}
             />
         }
+
         <OrbitControls
+          ref={controlRef}             // ← grab controls imperatively
           makeDefault
           enablePan={true}
           enableZoom={true}
