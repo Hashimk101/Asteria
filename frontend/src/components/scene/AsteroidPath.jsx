@@ -290,9 +290,11 @@ function Row({ label, value, color }) {
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
 export default function AsteroidPath({ vectors, isHazardous, asteroidMeta }) {
-  const bodyRef    = useRef();       // single ref on the group — glow is a child
-  const [selected, setSelected] = useState(false);
-  const [dotPos,   setDotPos]   = useState(null);
+  const bodyRef        = useRef();       // single ref on the group — glow is a child
+  const [selected,     setSelected]     = useState(false);
+  const [dotPos,       setDotPos]       = useState(null);
+  const [startHovered, setStartHovered] = useState(false);
+  const [endHovered,   setEndHovered]   = useState(false);
 
   const color   = isHazardous ? '#ff4444' : '#44aaff';
   const texture = useAsteroidTexture();
@@ -332,6 +334,16 @@ export default function AsteroidPath({ vectors, isHazardous, asteroidMeta }) {
     setSelected(s => !s);
   }, []);
 
+  const startDateStr = useMemo(() => {
+    if (!vectors[0]?.datetime) return null;
+    return new Date(vectors[0].datetime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }, [vectors]);
+
+  const endDateStr = useMemo(() => {
+    if (!vectors[vectors.length - 1]?.datetime) return null;
+    return new Date(vectors[vectors.length - 1].datetime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }, [vectors]);
+
   if (!lineArray) return null;
 
   return (
@@ -341,6 +353,88 @@ export default function AsteroidPath({ vectors, isHazardous, asteroidMeta }) {
       <OrbitalEllipse meta={asteroidMeta} color={color} />
 
       <AsteroidTrail pts={pts} color={color} />
+
+      {/* ── Start Marker (Hover to view tag) ──────────────────────── */}
+      {pts.length > 0 && (
+        <group
+          position={pts[0]}
+          onPointerOver={e => { e.stopPropagation(); setStartHovered(true); document.body.style.cursor = 'pointer'; }}
+          onPointerOut={()  => { setStartHovered(false); document.body.style.cursor = 'auto'; }}
+        >
+          <mesh>
+            <sphereGeometry args={[asteroidRadius * 1.5, 12, 12]} />
+            <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+          </mesh>
+          <mesh>
+            <sphereGeometry args={[asteroidRadius * 0.7, 16, 16]} />
+            <meshBasicMaterial color="#00ffaa" transparent opacity={startHovered ? 0.95 : 0.6} depthWrite={false} />
+          </mesh>
+          <mesh>
+            <sphereGeometry args={[asteroidRadius * 0.35, 12, 12]} />
+            <meshBasicMaterial color="#ffffff" />
+          </mesh>
+
+          {startHovered && (
+            <Html position={[0, asteroidRadius * 1.6, 0]} center distanceFactor={140} style={{ pointerEvents: 'none' }}>
+              <div style={{
+                background: 'rgba(0, 35, 20, 0.94)',
+                border: '1px solid #00ffaa',
+                borderRadius: '4px',
+                padding: '3px 8px',
+                color: '#00ffaa',
+                fontSize: '9px',
+                fontFamily: 'monospace',
+                letterSpacing: '0.08em',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 0 14px rgba(0,255,170,0.6)',
+              }}>
+                ▶ START {startDateStr ? `· ${startDateStr}` : ''}
+              </div>
+            </Html>
+          )}
+        </group>
+      )}
+
+      {/* ── End Marker (Hover to view tag) ────────────────────────── */}
+      {pts.length > 1 && (
+        <group
+          position={pts[pts.length - 1]}
+          onPointerOver={e => { e.stopPropagation(); setEndHovered(true); document.body.style.cursor = 'pointer'; }}
+          onPointerOut={()  => { setEndHovered(false); document.body.style.cursor = 'auto'; }}
+        >
+          <mesh>
+            <sphereGeometry args={[asteroidRadius * 1.5, 12, 12]} />
+            <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+          </mesh>
+          <mesh>
+            <sphereGeometry args={[asteroidRadius * 0.7, 16, 16]} />
+            <meshBasicMaterial color="#ff6644" transparent opacity={endHovered ? 0.95 : 0.6} depthWrite={false} />
+          </mesh>
+          <mesh>
+            <sphereGeometry args={[asteroidRadius * 0.35, 12, 12]} />
+            <meshBasicMaterial color="#ffffff" />
+          </mesh>
+
+          {endHovered && (
+            <Html position={[0, asteroidRadius * 1.6, 0]} center distanceFactor={140} style={{ pointerEvents: 'none' }}>
+              <div style={{
+                background: 'rgba(40, 12, 8, 0.94)',
+                border: '1px solid #ff6644',
+                borderRadius: '4px',
+                padding: '3px 8px',
+                color: '#ff6644',
+                fontSize: '9px',
+                fontFamily: 'monospace',
+                letterSpacing: '0.08em',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 0 14px rgba(255,102,68,0.6)',
+              }}>
+                ⏹ END {endDateStr ? `· ${endDateStr}` : ''}
+              </div>
+            </Html>
+          )}
+        </group>
+      )}
 
       {/* Asteroid body group — glow is a child, moves together */}
       <group ref={bodyRef} onClick={handleClick}>

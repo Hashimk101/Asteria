@@ -7,6 +7,7 @@ import Planet                                                           from "./
 import MilkyWay                                                         from "./MilkyWay";
 import LoadingScreen                                                    from "./LoadingScreen";
 import AsteroidPath                                                     from "../scene/AsteroidPath";
+import EarthAsteroidPath                                                from "../scene/EarthAsteroidPath";
 import * as THREE                                                       from "three";
 import {
   EARTH_RADIUS_U,
@@ -15,6 +16,7 @@ import {
   ORBITAL_RADII_AU,
   AU_TO_UNITS,
   PLANET_VISUAL_RADII,
+  toEarthRelVec3,
 } from "../../lib/constants/scale";
 
 // ─── Real orbital radii in Three.js units ─────────────────────────────────────
@@ -33,15 +35,19 @@ const ORBIT_COLORS = {
   Neptune: '#4a6fff',
 };
 
+// Realistic relative sizes — ratios match real planetary radii.
+// We apply a modest log-boost to inner planets so they're clickable,
+// but Jupiter/Saturn remain proportionally larger than Earth.
+const BASE_SCALE = PLANET_VISUAL_RADII.Earth; // ~6.4 units = 1 Earth radius
 const PLANET_RENDER_RADIUS = {
-  Mercury: Math.max(PLANET_VISUAL_RADII.Mercury, 2.5),
-  Venus:   Math.max(PLANET_VISUAL_RADII.Venus,   3.5),
-  Earth:   Math.max(PLANET_VISUAL_RADII.Earth,   4.0),
-  Mars:    Math.max(PLANET_VISUAL_RADII.Mars,     3.0),
-  Jupiter: PLANET_VISUAL_RADII.Jupiter,
-  Saturn:  PLANET_VISUAL_RADII.Saturn,
-  Uranus:  PLANET_VISUAL_RADII.Uranus,
-  Neptune: PLANET_VISUAL_RADII.Neptune,
+  Mercury: Math.max(PLANET_VISUAL_RADII.Mercury, BASE_SCALE * 0.38),  // real: 0.38×
+  Venus:   Math.max(PLANET_VISUAL_RADII.Venus,   BASE_SCALE * 0.95),  // real: 0.95×
+  Earth:   BASE_SCALE,                                                 // 1×
+  Mars:    Math.max(PLANET_VISUAL_RADII.Mars,     BASE_SCALE * 0.53),  // real: 0.53×
+  Jupiter: PLANET_VISUAL_RADII.Jupiter,                                // real: ~10.97×
+  Saturn:  PLANET_VISUAL_RADII.Saturn,                                 // real: ~9.14×
+  Uranus:  PLANET_VISUAL_RADII.Uranus,                                 // real: ~3.98×
+  Neptune: PLANET_VISUAL_RADII.Neptune,                                // real: ~3.87×
 };
 
 // ─── Orbit Ring ───────────────────────────────────────────────────────────────
@@ -146,7 +152,8 @@ function RealPlanet({ name, apiData }) {
 }
 
 // ─── Asteroid Selector UI ─────────────────────────────────────────────────────
-function AsteroidSelector({ asteroids, loadingList, selectedId, onChange, trajectoryLoading }) {
+function AsteroidSelector({ asteroids, loadingList, selectedId, onChange, trajectoryLoading, mode }) {
+  const isEarth = mode === 'earth';
   return (
     <div style={{
       position:       'fixed',
@@ -167,8 +174,14 @@ function AsteroidSelector({ asteroids, loadingList, selectedId, onChange, trajec
         color: '#888', fontSize: '9px', letterSpacing: '0.2em',
         fontFamily: 'monospace', textTransform: 'uppercase',
       }}>
-        Asteroid Tracker
+        {isEarth ? '◎ Earth-View Tracker' : '☉ Solar Tracker'}
       </label>
+
+      {isEarth && (
+        <span style={{ color: '#3a5a3a', fontSize: '8px', fontFamily: 'monospace', letterSpacing: '0.1em' }}>
+          Blue ring = Lunar distance
+        </span>
+      )}
 
       <select
         value={selectedId ?? ''}
@@ -226,7 +239,7 @@ function AsteroidSelector({ asteroids, loadingList, selectedId, onChange, trajec
 
 // ─── Locate Asteroid Button (outside Canvas) ──────────────────────────────────
 // Uses imperative refs to camera + controls — no useThree needed
-function LocateAsteroidButton({ vectors, cameraRef, controlRef }) {
+function LocateAsteroidButton({ vectors, cameraRef, controlRef, earthMode, earthPos }) {
   const handleLocate = useCallback(() => {
     if (!vectors.length || !cameraRef.current || !controlRef.current) return;
 
@@ -238,18 +251,38 @@ function LocateAsteroidButton({ vectors, cameraRef, controlRef }) {
       if (d < diff) { diff = d; best = i; }
     });
 
-    const v   = vectors[best];
-    const pos = new THREE.Vector3(
-      v.x_km * KM_TO_UNITS,
-      v.z_km * KM_TO_UNITS,
-      v.y_km * KM_TO_UNITS,
-    );
+    const v = vectors[best];
+    let pos;
 
-    // Smooth snap: set target then offset camera
-    controlRef.current.target.copy(pos);
-    cameraRef.current.position.set(pos.x + 25, pos.y + 12, pos.z + 25);
+    if (earthMode) {
+      pos = toEarthRelVec3(v, earthPos);
+      const dist = pos.length();
+      
+      // Focus target at the midpoint between Earth (0,0,0) and the Asteroid (pos)
+      // so both Earth and the Asteroid remain centered in the view
+      const midpoint = pos.clone().multiplyScalar(0.45);
+      
+      const dir = pos.clone().normalize();
+      const sideVec = new THREE.Vector3(-dir.z, 0.4, dir.x).normalize();
+      
+      const camDist = Math.max(dist * 0.95, 32);
+      const camPos = midpoint.clone()
+        .add(sideVec.multiplyScalar(camDist))
+        .add(new THREE.Vector3(0, Math.max(dist * 0.35, 12), 0));
+
+      controlRef.current.target.copy(midpoint);
+      cameraRef.current.position.copy(camPos);
+    } else {
+      pos = new THREE.Vector3(
+        v.x_km * KM_TO_UNITS,
+        v.z_km * KM_TO_UNITS,
+        v.y_km * KM_TO_UNITS,
+      );
+      controlRef.current.target.copy(pos);
+      cameraRef.current.position.set(pos.x + 25, pos.y + 12, pos.z + 25);
+    }
     controlRef.current.update();
-  }, [vectors, cameraRef, controlRef]);
+  }, [vectors, cameraRef, controlRef, earthMode, earthPos]);
 
   if (!vectors.length) return null;
 
@@ -320,16 +353,25 @@ function SolarSystemContent({ apiPlanets, asteroidVectors, asteroidHazardous, as
 }
 
 // ─── Earth Close-Up Scene ─────────────────────────────────────────────────────
-function EarthContent({ onEarthLoaded }) {
+function EarthContent({ onEarthLoaded, asteroidVectors, asteroidMeta, asteroidHazardous, earthPos }) {
   return (
     <>
-      <ambientLight intensity={0.08} color="#c8d8ff" />
-      <directionalLight position={[5, 3, 5]}   intensity={2.4} color="#fff8e8" />
-      <directionalLight position={[-4, -1, -4]} intensity={0.06} color="#2040c0" />
+      <ambientLight intensity={0.35} color="#c8d8ff" />
+      <hemisphereLight skyColor="#ffffff" groundColor="#0c1525" intensity={0.4} />
+      <directionalLight position={[10, 8, 10]} intensity={2.6} color="#fff8e8" />
+      <directionalLight position={[-10, -5, -10]} intensity={0.2} color="#2040c0" />
       <MilkyWay />
       <Suspense fallback={null}>
         <Earth onLoaded={onEarthLoaded} />
       </Suspense>
+      {asteroidVectors.length > 0 && (
+        <EarthAsteroidPath
+          vectors={asteroidVectors}
+          isHazardous={asteroidHazardous}
+          asteroidMeta={asteroidMeta}
+          earthPosKm={earthPos}
+        />
+      )}
     </>
   );
 }
@@ -379,6 +421,7 @@ export default function Scene() {
   const [earthReady,          setEarthReady]         = useState(false);
   const [mode,                setMode]               = useState('earth');
   const [apiPlanets,          setApiPlanets]         = useState({});
+  const [earthPos,            setEarthPos]           = useState(null); // heliocentric km
   const [asteroidList,        setAsteroidList]       = useState([]);
   const [asteroidListLoading, setAsteroidListLoading]= useState(false);
   const [selectedAsteroidId,  setSelectedAsteroidId] = useState(null);
@@ -391,26 +434,43 @@ export default function Scene() {
   const cameraRef  = useRef(null);
   const controlRef = useRef(null);
 
-  // ── Fetch planets once on solar mode entry ────────────────────────────────
+  // ── Fetch planets (both modes need Earth position) ────────────────────────
   useEffect(() => {
-    if (mode === 'solar' && Object.keys(apiPlanets).length === 0) {
+    if (Object.keys(apiPlanets).length === 0) {
       fetch('https://asteria.fastapicloud.dev/planets')
         .then(r => r.json())
-        .then(d => setApiPlanets(d.planets ?? d))
+        .then(d => {
+          const planets = d.planets ?? d;
+          setApiPlanets(planets);
+          // Cache Earth's trajectory array for Earth-relative asteroid math
+          if (planets.Earth) {
+            setEarthPos(Array.isArray(planets.Earth) ? planets.Earth : [planets.Earth]);
+          }
+        })
         .catch(err => console.error('❌ planets fetch failed:', err));
     }
-  }, [mode, apiPlanets]);
+  }, [apiPlanets]);
 
-  // ── Fetch asteroid list once on solar mode entry ──────────────────────────
+  // ── Fetch asteroid list once (shared between both modes) ──────────────────
   useEffect(() => {
-    if (mode !== 'solar' || asteroidList.length > 0) return;
+    if (asteroidList.length > 0) return;
     const loadingTimer = setTimeout(() => setAsteroidListLoading(true), 0);
     fetch('https://asteria.fastapicloud.dev/asteroids?page=1&limit=100')
       .then(r => r.json())
-      .then(d => { setAsteroidList(d); setAsteroidListLoading(false); })
+      .then(d => {
+        // Deduplicate by spk_id — API occasionally returns the same asteroid twice
+        const seen = new Set();
+        const unique = (Array.isArray(d) ? d : []).filter(a => {
+          if (seen.has(a.spk_id)) return false;
+          seen.add(a.spk_id);
+          return true;
+        });
+        setAsteroidList(unique);
+        setAsteroidListLoading(false);
+      })
       .catch(()  => setAsteroidListLoading(false));
     return () => clearTimeout(loadingTimer);
-  }, [mode, asteroidList.length]);
+  }, [asteroidList.length]);
 
   // ── Fetch trajectory + meta when selection changes ────────────────────────
   useEffect(() => {
@@ -448,11 +508,11 @@ export default function Scene() {
 
   // ── Camera configs ────────────────────────────────────────────────────────
   const cameraConfig = mode === 'earth'
-    ? { position: [0, EARTH_RADIUS_U * 1.2, EARTH_CAM_DISTANCE], fov: 45, near: 0.0001, far: 50_000 }
+    ? { position: [0, EARTH_RADIUS_U * 1.2, EARTH_CAM_DISTANCE], fov: 45, near: 0.1, far: 500_000 }
     : { position: [0, 600, 1200], fov: 60, near: 0.5, far: 15_000 };
 
   const controlsConfig = mode === 'earth'
-    ? { minDistance: EARTH_RADIUS_U * 1.5, maxDistance: EARTH_RADIUS_U * 80, rotateSpeed: 0.45, zoomSpeed: 0.7 }
+    ? { minDistance: EARTH_RADIUS_U * 1.5, maxDistance: EARTH_RADIUS_U * 20_000, rotateSpeed: 0.45, zoomSpeed: 0.7 }
     : { minDistance: 8, maxDistance: 8000, rotateSpeed: 0.5, zoomSpeed: 1.2, minPolarAngle: 0, maxPolarAngle: Math.PI / 1.8 };
 
   return (
@@ -464,24 +524,24 @@ export default function Scene() {
         onToggle={() => setMode(m => m === 'earth' ? 'solar' : 'earth')}
       />
 
-      {mode === 'solar' && (
-        <AsteroidSelector
-          asteroids={asteroidList}
-          loadingList={asteroidListLoading}
-          selectedId={selectedAsteroidId}
-          trajectoryLoading={trajectoryLoading}
-          onChange={setSelectedAsteroidId}
-        />
-      )}
+      {/* Asteroid selector — visible in BOTH modes */}
+      <AsteroidSelector
+        asteroids={asteroidList}
+        loadingList={asteroidListLoading}
+        selectedId={selectedAsteroidId}
+        trajectoryLoading={trajectoryLoading}
+        onChange={setSelectedAsteroidId}
+        mode={mode}
+      />
 
       {/* Locate button — outside Canvas, uses imperative cameraRef/controlRef */}
-      {mode === 'solar' && (
-        <LocateAsteroidButton
-          vectors={asteroidVectors}
-          cameraRef={cameraRef}
-          controlRef={controlRef}
-        />
-      )}
+      <LocateAsteroidButton
+        vectors={asteroidVectors}
+        cameraRef={cameraRef}
+        controlRef={controlRef}
+        earthMode={mode === 'earth'}
+        earthPos={earthPos}
+      />
 
       <Canvas
         key={mode}
@@ -493,7 +553,7 @@ export default function Scene() {
           powerPreference:        'high-performance',
           toneMapping:            3,
           toneMappingExposure:    mode === 'solar' ? 0.85 : 1.1,
-          logarithmicDepthBuffer: mode === 'solar',
+          logarithmicDepthBuffer: true,
         }}
         onCreated={({ gl, camera }) => {
           gl.setClearColor('#010205');
@@ -501,7 +561,13 @@ export default function Scene() {
         }}
       >
         {mode === 'earth'
-          ? <EarthContent onEarthLoaded={() => setEarthReady(true)} />
+          ? <EarthContent
+              onEarthLoaded={() => setEarthReady(true)}
+              asteroidVectors={asteroidVectors}
+              asteroidMeta={asteroidMeta}
+              asteroidHazardous={asteroidHazardous}
+              earthPos={earthPos}
+            />
           : <SolarSystemContent
               apiPlanets={apiPlanets}
               asteroidVectors={asteroidVectors}
