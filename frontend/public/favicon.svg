@@ -1,1 +1,122 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="48" height="46" fill="none" viewBox="0 0 48 46"><path fill="#863bff" d="M25.946 44.938c-.664.845-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.287c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.497 0-3.578-1.842-3.578H1.237c-.92 0-1.456-1.04-.92-1.788L10.013.474c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.579 1.842 3.579h11.377c.943 0 1.473 1.088.89 1.83L25.947 44.94z" style="fill:#863bff;fill:color(display-p3 .5252 .23 1);fill-opacity:1"/><mask id="a" width="48" height="46" x="0" y="0" maskUnits="userSpaceOnUse" style="mask-type:alpha"><path fill="#000" d="M25.842 44.938c-.664.844-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.183c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.498 0-3.579-1.842-3.579H1.133c-.92 0-1.456-1.04-.92-1.787L9.91.473c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.578 1.842 3.578h11.377c.943 0 1.473 1.088.89 1.832L25.843 44.94z" style="fill:#000;fill-opacity:1"/></mask><g mask="url(#a)"><g filter="url(#b)"><ellipse cx="5.508" cy="14.704" fill="#ede6ff" rx="5.508" ry="14.704" style="fill:#ede6ff;fill:color(display-p3 .9275 .9033 1);fill-opacity:1" transform="matrix(.00324 1 1 -.00324 -4.47 31.516)"/></g><g filter="url(#c)"><ellipse cx="10.399" cy="29.851" fill="#ede6ff" rx="10.399" ry="29.851" style="fill:#ede6ff;fill:color(display-p3 .9275 .9033 1);fill-opacity:1" transform="matrix(.00324 1 1 -.00324 -39.328 7.883)"/></g><g filter="url(#d)"><ellipse cx="5.508" cy="30.487" fill="#7e14ff" rx="5.508" ry="30.487" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.814 -25.913 -14.639)scale(1 -1)"/></g><g filter="url(#e)"><ellipse cx="5.508" cy="30.599" fill="#7e14ff" rx="5.508" ry="30.599" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.814 -32.644 -3.334)scale(1 -1)"/></g><g filter="url(#f)"><ellipse cx="5.508" cy="30.599" fill="#7e14ff" rx="5.508" ry="30.599" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="matrix(.00324 1 1 -.00324 -34.34 30.47)"/></g><g filter="url(#g)"><ellipse cx="14.072" cy="22.078" fill="#ede6ff" rx="14.072" ry="22.078" style="fill:#ede6ff;fill:color(display-p3 .9275 .9033 1);fill-opacity:1" transform="rotate(93.35 24.506 48.493)scale(-1 1)"/></g><g filter="url(#h)"><ellipse cx="3.47" cy="21.501" fill="#7e14ff" rx="3.47" ry="21.501" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.009 28.708 47.59)scale(-1 1)"/></g><g filter="url(#i)"><ellipse cx="3.47" cy="21.501" fill="#7e14ff" rx="3.47" ry="21.501" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.009 28.708 47.59)scale(-1 1)"/></g><g filter="url(#j)"><ellipse cx=".387" cy="8.972" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(39.51 .387 8.972)"/></g><g filter="url(#k)"><ellipse cx="47.523" cy="-6.092" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 47.523 -6.092)"/></g><g filter="url(#l)"><ellipse cx="41.412" cy="6.333" fill="#47bfff" rx="5.971" ry="9.665" style="fill:#47bfff;fill:color(display-p3 .2799 .748 1);fill-opacity:1" transform="rotate(37.892 41.412 6.333)"/></g><g filter="url(#m)"><ellipse cx="-1.879" cy="38.332" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 -1.88 38.332)"/></g><g filter="url(#n)"><ellipse cx="-1.879" cy="38.332" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 -1.88 38.332)"/></g><g filter="url(#o)"><ellipse cx="35.651" cy="29.907" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 35.651 29.907)"/></g><g filter="url(#p)"><ellipse cx="38.418" cy="32.4" fill="#47bfff" rx="5.971" ry="15.297" style="fill:#47bfff;fill:color(display-p3 .2799 .748 1);fill-opacity:1" transform="rotate(37.892 38.418 32.4)"/></g></g><defs><filter id="b" width="60.045" height="41.654" x="-19.77" y="16.149" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="7.659"/></filter><filter id="c" width="90.34" height="51.437" x="-54.613" y="-7.533" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="7.659"/></filter><filter id="d" width="79.355" height="29.4" x="-49.64" y="2.03" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="e" width="79.579" height="29.4" x="-45.045" y="20.029" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="f" width="79.579" height="29.4" x="-43.513" y="21.178" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="g" width="74.749" height="58.852" x="15.756" y="-17.901" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="7.659"/></filter><filter id="h" width="61.377" height="25.362" x="23.548" y="2.284" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="i" width="61.377" height="25.362" x="23.548" y="2.284" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="j" width="56.045" height="63.649" x="-27.636" y="-22.853" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="k" width="54.814" height="64.646" x="20.116" y="-38.415" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="l" width="33.541" height="35.313" x="24.641" y="-11.323" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="m" width="54.814" height="64.646" x="-29.286" y="6.009" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="n" width="54.814" height="64.646" x="-29.286" y="6.009" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="o" width="54.814" height="64.646" x="8.244" y="-2.416" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="p" width="39.409" height="43.623" x="18.713" y="10.588" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter></defs></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="60%">
+      <stop offset="0" stop-color="#102d4d"/>
+      <stop offset=".62" stop-color="#061326"/>
+      <stop offset="1" stop-color="#020611"/>
+    </radialGradient>
+    <radialGradient id="rock" cx="35%" cy="25%" r="75%">
+      <stop offset="0" stop-color="#8e7b65"/>
+      <stop offset=".28" stop-color="#4c443d"/>
+      <stop offset=".65" stop-color="#211f20"/>
+      <stop offset="1" stop-color="#090b10"/>
+    </radialGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#35e8ff"/>
+      <stop offset=".5" stop-color="#1470c9"/>
+      <stop offset="1" stop-color="#ff9b32"/>
+    </linearGradient>
+    <filter id="glowC">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowO">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="disc"><circle cx="256" cy="256" r="205"/></clipPath>
+  </defs>
+
+  <!-- Deep-space core -->
+  <circle cx="256" cy="256" r="238" fill="url(#bg)"/>
+  <g clip-path="url(#disc)" opacity=".9">
+    <g fill="#fff">
+      <circle cx="83" cy="113" r="1.5"/><circle cx="119" cy="72" r="1"/>
+      <circle cx="178" cy="101" r="1.2"/><circle cx="390" cy="88" r="1.4"/>
+      <circle cx="433" cy="155" r="1"/><circle cx="82" cy="330" r="1.2"/>
+      <circle cx="137" cy="405" r="1"/><circle cx="366" cy="407" r="1.3"/>
+      <circle cx="425" cy="342" r="1.5"/><circle cx="333" cy="58" r="1"/>
+      <circle cx="58" cy="247" r="1.2"/><circle cx="463" cy="250" r="1"/>
+    </g>
+  </g>
+
+  <!-- Outer instrument bezel -->
+  <circle cx="256" cy="256" r="231" fill="none" stroke="#07101d" stroke-width="18"/>
+  <circle cx="256" cy="256" r="225" fill="none" stroke="url(#edge)" stroke-width="5"/>
+  <circle cx="256" cy="256" r="214" fill="none" stroke="#159edc" stroke-opacity=".7" stroke-width="2"/>
+  <circle cx="256" cy="256" r="207" fill="none" stroke="#ff9b32" stroke-opacity=".55" stroke-width="2" stroke-dasharray="7 19"/>
+
+  <!-- Orbital measurement paths -->
+  <g fill="none" stroke-linecap="round" filter="url(#glowC)">
+    <ellipse cx="256" cy="256" rx="177" ry="72" transform="rotate(20 256 256)"
+             stroke="#32e8ff" stroke-width="3"/>
+    <ellipse cx="256" cy="256" rx="185" ry="96" transform="rotate(-28 256 256)"
+             stroke="#ff9b32" stroke-width="2.5"/>
+    <ellipse cx="256" cy="256" rx="155" ry="155"
+             stroke="#24a8ef" stroke-width="1.5" stroke-dasharray="9 10"/>
+  </g>
+
+  <!-- Measurement crosshair -->
+  <g stroke="#36eaff" stroke-width="1.5" opacity=".75">
+    <path d="M256 48v416M48 256h416"/>
+    <path d="M246 256h20M256 246v20"/>
+  </g>
+  <circle cx="256" cy="256" r="8" fill="#061321" stroke="#45efff" stroke-width="3"/>
+
+  <!-- Asteroid -->
+  <path d="M151 228
+           C151 198 172 177 193 162
+           C216 145 243 137 272 143
+           C300 130 331 145 350 164
+           C375 179 391 207 387 232
+           C403 257 388 287 373 303
+           C365 331 338 347 313 355
+           C287 373 256 363 234 370
+           C207 359 184 345 171 321
+           C148 307 139 276 151 251
+           C142 244 143 235 151 228Z"
+        fill="url(#rock)" stroke="#b7c3ca" stroke-width="3"/>
+
+  <!-- Asteroid facets -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M181 220l46-44 44 19 42-18 35 47-27 40-51 14-38 42-45-31 12-39z"
+          stroke="#8d8172" stroke-opacity=".65" stroke-width="4"/>
+    <path d="M228 176l17 52-34 43M271 195l-26 33 38 31 43-39M245 280l-8 50M291 274l22 55"
+          stroke="#554b43" stroke-width="5"/>
+    <path d="M194 266l38-13 29 25-23 37M311 223l34 18-18 32-38-8"
+          stroke="#a28b6c" stroke-opacity=".6" stroke-width="3"/>
+  </g>
+
+  <!-- Glowing mineral fissures -->
+  <g fill="none" stroke="#ff8b22" stroke-linecap="round" filter="url(#glowO)">
+    <path d="M191 218l29-18 18 20 24-9 19 25" stroke-width="5"/>
+    <path d="M283 246l20-17 27 9 15-21" stroke-width="4"/>
+    <path d="M226 305l22-15 20 11 23-21" stroke-width="4"/>
+  </g>
+
+  <!-- Orbit nodes -->
+  <g fill="#071522" stroke="#42efff" stroke-width="3" filter="url(#glowC)">
+    <circle cx="105" cy="228" r="7"/><circle cx="406" cy="309" r="7"/>
+    <circle cx="365" cy="155" r="6"/>
+  </g>
+
+  <!-- Tiny Earth-like marker -->
+  <g transform="translate(113 327)">
+    <circle r="25" fill="#07111d" stroke="#35dfff" stroke-width="2"/>
+    <path d="M-14-4c8-13 18-10 22-3l-5 7-8 1-5 9-8-5z" fill="#3b91c8"/>
+    <path d="M5 10l10-6 5 8-8 8z" fill="#4f9b67"/>
+  </g>
+
+  <!-- App mark / targeting accent -->
+  <g transform="translate(405 112)" filter="url(#glowC)">
+    <circle r="15" fill="none" stroke="#36eaff" stroke-width="2"/>
+    <path d="M0-25v10M0 15v10M-25 0h10M15 0h10" stroke="#36eaff" stroke-width="2"/>
+    <circle r="4" fill="#ff9b32"/>
+  </g>
+
+  <!-- Subtle tick marks -->
+  <g stroke="#36eaff" stroke-width="2" opacity=".8">
+    <path d="M256 42v12M256 458v12M42 256h12M458 256h12"/>
+    <path d="M105 105l8 8M399 105l-8 8M105 407l8-8M407 407l-8-8"/>
+  </g>
+</svg>
