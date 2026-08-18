@@ -204,17 +204,17 @@ function DetailPanel({ meta, vectors, isHazardous, onClose }) {
 
   return (
     <div style={{
-      background:    'rgba(4,3,2,0.94)',
-      border:        `1px solid ${color}44`,
+      background:    'rgba(4,3,2,0.96)',
+      border:        `1px solid ${color}55`,
       borderRadius:  '8px',
       padding:       '14px 16px',
-      color:         '#c8c8c8',
+      color:         '#e0e0e0',
       fontSize:      '10px',
       fontFamily:    'monospace',
       letterSpacing: '0.07em',
       minWidth:      '240px',
       maxWidth:      '280px',
-      boxShadow:     `0 0 28px ${color}18, 0 4px 24px rgba(0,0,0,0.7)`,
+      boxShadow:     `0 0 28px ${color}22, 0 4px 24px rgba(0,0,0,0.7)`,
       lineHeight:    '1.75',
       pointerEvents: 'all',
       userSelect:    'none',
@@ -223,9 +223,9 @@ function DetailPanel({ meta, vectors, isHazardous, onClose }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
         <div>
           <div style={{ color, fontSize: '12px', fontWeight: 'bold', letterSpacing: '0.12em' }}>
-            {isHazardous ? '⚠ ' : '◉ '}{meta?.name ?? 'ASTEROID'}
+            {isHazardous ? '[!] ' : '[*] '}{meta?.name ?? 'ASTEROID'}
           </div>
-          <div style={{ color: '#444', fontSize: '9px', marginTop: '2px' }}>
+          <div style={{ color: '#7a8a9a', fontSize: '9px', marginTop: '2px' }}>
             {meta?.orbit_class_name ?? ''} · SPK {meta?.spk_id ?? '—'}
           </div>
         </div>
@@ -267,8 +267,8 @@ function DetailPanel({ meta, vectors, isHazardous, onClose }) {
       </>}
 
       <Divider color={color} />
-      <div style={{ color: '#3a3a3a', fontSize: '9px', letterSpacing: '0.1em' }}>TRAJECTORY WINDOW</div>
-      <div style={{ color: '#555', fontSize: '9px', marginTop: '2px' }}>{trajStart} → {trajEnd}</div>
+      <div style={{ color: '#8a9aaa', fontSize: '9px', letterSpacing: '0.1em' }}>TRAJECTORY WINDOW</div>
+      <div style={{ color: '#9aacbc', fontSize: '9px', marginTop: '2px' }}>{trajStart} → {trajEnd}</div>
     </div>
   );
 }
@@ -277,13 +277,13 @@ function Divider({ color }) {
   return <div style={{ borderTop: `1px solid ${color}18`, margin: '8px 0' }} />;
 }
 function SectionLabel({ label }) {
-  return <div style={{ color: '#3d3d3d', fontSize: '8px', letterSpacing: '0.2em', marginBottom: '3px' }}>{label}</div>;
+  return <div style={{ color: '#8a9aaa', fontSize: '8px', letterSpacing: '0.2em', marginBottom: '3px' }}>{label}</div>;
 }
 function Row({ label, value, color }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
-      <span style={{ color: '#4a4a4a' }}>{label}</span>
-      <span style={{ color: color ?? '#d4944a' }}>{value ?? '—'}</span>
+      <span style={{ color: '#9aacbc' }}>{label}</span>
+      <span style={{ color: color ?? '#e8b870' }}>{value ?? '—'}</span>
     </div>
   );
 }

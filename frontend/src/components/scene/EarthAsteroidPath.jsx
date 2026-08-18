@@ -179,7 +179,7 @@ function EarthInfoPanel({ meta, isHazardous, onClose, currentPos }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
         <div>
           <div style={{ color, fontSize: '12px', fontWeight: 'bold', letterSpacing: '0.12em' }}>
-            {isHazardous ? '⚠ ' : '◉ '}{meta?.name ?? 'ASTEROID'}
+            {isHazardous ? '[!] ' : '[*] '}{meta?.name ?? 'ASTEROID'}
           </div>
           <div style={{ color: '#444', fontSize: '9px', marginTop: '2px' }}>
             {meta?.orbit_class_name ?? ''} · SPK {meta?.spk_id ?? '—'}

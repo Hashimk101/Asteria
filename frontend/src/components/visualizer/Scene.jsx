@@ -35,20 +35,22 @@ const ORBIT_COLORS = {
   Neptune: '#4a6fff',
 };
 
-// Realistic relative sizes — ratios match real planetary radii.
-// We apply a modest log-boost to inner planets so they're clickable,
-// but Jupiter/Saturn remain proportionally larger than Earth.
+// Sun visual radius ≈ 20.9 units. Outer planets capped well BELOW the Sun.
+// Real Sun:Jupiter diameter ratio ≈ 5:1 → at Sun=20.9u, Jupiter≈4.2u realistic.
+// We use Jupiter=10u for visibility while keeping it clearly smaller than Sun.
 const BASE_SCALE = PLANET_VISUAL_RADII.Earth; // ~6.4 units = 1 Earth radius
 const PLANET_RENDER_RADIUS = {
-  Mercury: Math.max(PLANET_VISUAL_RADII.Mercury, BASE_SCALE * 0.38),  // real: 0.38×
+  Mercury: Math.max(PLANET_VISUAL_RADII.Mercury, BASE_SCALE * 0.50),  // boosted min for clickability
   Venus:   Math.max(PLANET_VISUAL_RADII.Venus,   BASE_SCALE * 0.95),  // real: 0.95×
   Earth:   BASE_SCALE,                                                 // 1×
-  Mars:    Math.max(PLANET_VISUAL_RADII.Mars,     BASE_SCALE * 0.53),  // real: 0.53×
-  Jupiter: PLANET_VISUAL_RADII.Jupiter,                                // real: ~10.97×
-  Saturn:  PLANET_VISUAL_RADII.Saturn,                                 // real: ~9.14×
-  Uranus:  PLANET_VISUAL_RADII.Uranus,                                 // real: ~3.98×
-  Neptune: PLANET_VISUAL_RADII.Neptune,                                // real: ~3.87×
+  Mars:    Math.max(PLANET_VISUAL_RADII.Mars,     BASE_SCALE * 0.60),  // boosted min for clickability
+  // Gas giants — proportions preserved between them, all smaller than Sun (20.9u)
+  Jupiter: 10,   // biggest planet — ~48% of Sun radius
+  Saturn:   8,   // real: ~84% of Jupiter
+  Uranus:   5,   // real: ~46% of Jupiter
+  Neptune:  4.5, // real: ~44% of Jupiter
 };
+
 
 // ─── Orbit Ring ───────────────────────────────────────────────────────────────
 function OrbitRing({ radius, color }) {
@@ -70,9 +72,10 @@ function OrbitRing({ radius, color }) {
 
 // ─── Real-position Planet ─────────────────────────────────────────────────────
 function RealPlanet({ name, apiData }) {
-  const groupRef             = useRef();
-  const [hovered, setHovered] = useState(false);
-  const { camera, controls } = useThree();
+  const groupRef              = useRef();
+  const [hovered,  setHovered] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const { camera, controls }  = useThree();
 
   const position = useMemo(() => {
     if (!apiData?.x_km) return null;
@@ -86,19 +89,7 @@ function RealPlanet({ name, apiData }) {
   const color  = ORBIT_COLORS[name] ?? '#ffffff';
   const radius = PLANET_RENDER_RADIUS[name] ?? 4;
 
-  const handleDoubleClick = (e) => {
-    e.stopPropagation();
-    if (!controls || !position) return;
-    controls.target.copy(position);
-    camera.position.set(
-      position.x + radius * 8,
-      position.y + radius * 4,
-      position.z + radius * 8,
-    );
-    controls.update();
-  };
-
-  // Deterministic fallback position on the real orbit ring while API loads
+  // ── Deterministic fallback position while API loads ──────────────────────
   const fallbackPos = useMemo(() => {
     const r = ORBIT_RING_RADII[name] ?? 100;
     let hash = 0;
@@ -109,14 +100,54 @@ function RealPlanet({ name, apiData }) {
 
   const pos = position ?? fallbackPos;
 
+  // ── Camera actions ────────────────────────────────────────────────────────
+  const focusOnPlanet = useCallback(() => {
+    if (!controls) return;
+    controls.target.copy(pos);
+    camera.position.set(
+      pos.x + radius * 8,
+      pos.y + radius * 5,
+      pos.z + radius * 8,
+    );
+    controls.update();
+    setShowMenu(false);
+  }, [camera, controls, pos, radius]);
+
+  const viewFromPlanet = useCallback(() => {
+    if (!controls) return;
+    // Direction from Sun to this planet (outward radial)
+    const outward = pos.clone().normalize();
+    // Camera sits just outside the planet, offset slightly above the ecliptic
+    const camPos = pos.clone()
+      .add(outward.clone().multiplyScalar(radius * 6))
+      .add(new THREE.Vector3(0, radius * 2, 0));
+    // Look slightly past the Sun so the inner solar system is framed nicely
+    const lookAt = new THREE.Vector3(0, 0, 0);
+    camera.position.copy(camPos);
+    controls.target.copy(lookAt);
+    controls.update();
+    setShowMenu(false);
+  }, [camera, controls, pos, radius]);
+
+  const handleDoubleClick = useCallback((e) => {
+    e.stopPropagation();
+    setShowMenu(s => !s);
+  }, []);
+
+  // Close menu when clicking empty space
+  const handleBackgroundClick = useCallback(() => setShowMenu(false), []);
+
   return (
     <>
       <OrbitRing radius={ORBIT_RING_RADII[name] ?? 100} color={color} />
       <group ref={groupRef} position={pos}>
+
+        {/* Invisible hit area (larger than planet for easy clicking) */}
         <mesh
           onPointerOver={e => { e.stopPropagation(); setHovered(true);  document.body.style.cursor = 'pointer'; }}
           onPointerOut={()  => { setHovered(false);  document.body.style.cursor = 'auto'; }}
           onDoubleClick={handleDoubleClick}
+          onClick={e => { e.stopPropagation(); if (showMenu) setShowMenu(false); }}
         >
           <sphereGeometry args={[radius * 2.5, 8, 8]} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
@@ -127,7 +158,8 @@ function RealPlanet({ name, apiData }) {
           sizeOverride={radius}
         />
 
-        {hovered && (
+        {/* Hover name tag */}
+        {hovered && !showMenu && (
           <Html center distanceFactor={200} style={{ pointerEvents: 'none' }}>
             <div style={{
               background:    'rgba(5,3,0,0.88)',
@@ -142,7 +174,96 @@ function RealPlanet({ name, apiData }) {
               textTransform: 'uppercase',
               boxShadow:     `0 0 12px ${color}33`,
             }}>
-              {name}
+              {name} · double-click for options
+            </div>
+          </Html>
+        )}
+
+        {/* Double-click context menu */}
+        {showMenu && (
+          <Html
+            center
+            distanceFactor={200}
+            position={[0, radius * 2.5, 0]}
+            zIndexRange={[200, 0]}
+          >
+            <div style={{
+              background:    'rgba(6,4,1,0.96)',
+              border:        `1px solid ${color}66`,
+              borderRadius:  '6px',
+              padding:       '10px 12px',
+              fontFamily:    'monospace',
+              minWidth:      '170px',
+              boxShadow:     `0 0 20px ${color}22, 0 4px 20px rgba(0,0,0,0.8)`,
+              userSelect:    'none',
+            }}>
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ color, fontSize: '11px', letterSpacing: '0.18em', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                  {name}
+                </span>
+                <button
+                  onClick={() => setShowMenu(false)}
+                  style={{
+                    background: 'transparent', border: '1px solid #333', borderRadius: '3px',
+                    color: '#666', cursor: 'pointer', fontSize: '9px', padding: '1px 5px',
+                    fontFamily: 'monospace', lineHeight: '1.4', flexShrink: 0, marginLeft: '8px',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#aaa'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#666'}
+                >✕</button>
+              </div>
+
+              <div style={{ borderTop: `1px solid ${color}22`, marginBottom: '8px' }} />
+
+              {/* Focus button */}
+              <button
+                onClick={focusOnPlanet}
+                style={{
+                  display:       'block',
+                  width:         '100%',
+                  marginBottom:  '6px',
+                  background:    `${color}12`,
+                  border:        `1px solid ${color}44`,
+                  borderRadius:  '4px',
+                  color:         color,
+                  padding:       '6px 10px',
+                  fontSize:      '10px',
+                  fontFamily:    'monospace',
+                  letterSpacing: '0.12em',
+                  cursor:        'pointer',
+                  textAlign:     'left',
+                  transition:    'background 0.2s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = `${color}28`}
+                onMouseLeave={e => e.currentTarget.style.background = `${color}12`}
+              >
+                ⊙ FOCUS CAMERA
+              </button>
+
+              {/* View From Planet button */}
+              <button
+                onClick={viewFromPlanet}
+                style={{
+                  display:       'block',
+                  width:         '100%',
+                  background:    'rgba(255,255,255,0.04)',
+                  border:        '1px solid rgba(255,255,255,0.15)',
+                  borderRadius:  '4px',
+                  color:         '#c8c8c8',
+                  padding:       '6px 10px',
+                  fontSize:      '10px',
+                  fontFamily:    'monospace',
+                  letterSpacing: '0.12em',
+                  cursor:        'pointer',
+                  textAlign:     'left',
+                  transition:    'background 0.2s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.10)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+              >
+                {"[>] VIEW FROM HERE"}
+              </button>
             </div>
           </Html>
         )}
@@ -151,9 +272,61 @@ function RealPlanet({ name, apiData }) {
   );
 }
 
+
 // ─── Asteroid Selector UI ─────────────────────────────────────────────────────
 function AsteroidSelector({ asteroids, loadingList, selectedId, onChange, trajectoryLoading, mode }) {
   const isEarth = mode === 'earth';
+  const [collapsed, setCollapsed] = useState(false);
+
+  const icon = isEarth ? '◎' : '☉';
+  const label = isEarth ? 'EARTH-VIEW TRACKER' : 'SOLAR TRACKER';
+
+  // ── Collapsed: show a small icon button only ──────────────────────────────
+  if (collapsed) {
+    return (
+      <button
+        onClick={() => setCollapsed(false)}
+        title={label}
+        style={{
+          position:             'fixed',
+          top:                  '110px',
+          right:                '20px',
+          zIndex:               150,
+          background:           'rgba(8,5,0,0.85)',
+          border:               '1px solid rgba(196,140,64,0.35)',
+          borderRadius:         '4px',
+          color:                '#d4944a',
+          padding:              '10px 14px',
+          fontSize:             '13px',
+          fontFamily:           'monospace',
+          letterSpacing:        '0.1em',
+          cursor:               'pointer',
+          backdropFilter:       'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          transition:           'all 0.25s ease',
+          display:              'flex',
+          alignItems:           'center',
+          gap:                  '6px',
+          whiteSpace:           'nowrap',
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.background  = 'rgba(196,140,64,0.12)';
+          e.currentTarget.style.borderColor = 'rgba(196,140,64,0.6)';
+          e.currentTarget.style.color       = '#f0d4a0';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.background  = 'rgba(8,5,0,0.85)';
+          e.currentTarget.style.borderColor = 'rgba(196,140,64,0.35)';
+          e.currentTarget.style.color       = '#d4944a';
+        }}
+      >
+        {icon}
+        {selectedId && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#d4944a', flexShrink: 0 }} />}
+      </button>
+    );
+  }
+
+  // ── Expanded panel ────────────────────────────────────────────────────────
   return (
     <div style={{
       position:       'fixed',
@@ -170,15 +343,37 @@ function AsteroidSelector({ asteroids, loadingList, selectedId, onChange, trajec
       backdropFilter: 'blur(12px)',
       minWidth:       '220px',
     }}>
-      <label style={{
-        color: '#888', fontSize: '9px', letterSpacing: '0.2em',
-        fontFamily: 'monospace', textTransform: 'uppercase',
-      }}>
-        {isEarth ? '◎ Earth-View Tracker' : '☉ Solar Tracker'}
-      </label>
+      {/* Header row with label + collapse button */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <label style={{
+          color: '#c8a870', fontSize: '9px', letterSpacing: '0.2em',
+          fontFamily: 'monospace', textTransform: 'uppercase', cursor: 'default',
+        }}>
+          {icon} {isEarth ? 'Earth-View Tracker' : 'Solar Tracker'}
+        </label>
+        <button
+          onClick={() => setCollapsed(true)}
+          title="Collapse"
+          style={{
+            background:    'transparent',
+            border:        '1px solid rgba(196,140,64,0.25)',
+            borderRadius:  '3px',
+            color:         '#888',
+            cursor:        'pointer',
+            fontSize:      '9px',
+            fontFamily:    'monospace',
+            lineHeight:    '1.4',
+            padding:       '1px 5px',
+            flexShrink:    0,
+            marginLeft:    '8px',
+          }}
+          onMouseEnter={e => e.currentTarget.style.color = '#d4944a'}
+          onMouseLeave={e => e.currentTarget.style.color = '#888'}
+        >−</button>
+      </div>
 
       {isEarth && (
-        <span style={{ color: '#3a5a3a', fontSize: '8px', fontFamily: 'monospace', letterSpacing: '0.1em' }}>
+        <span style={{ color: '#5a7a5a', fontSize: '8px', fontFamily: 'monospace', letterSpacing: '0.1em' }}>
           Blue ring = Lunar distance
         </span>
       )}
@@ -205,13 +400,13 @@ function AsteroidSelector({ asteroids, loadingList, selectedId, onChange, trajec
         </option>
         {asteroids.map(a => (
           <option key={a.spk_id} value={a.spk_id} style={{ background: '#0a0805' }}>
-            {a.name}{a.is_hazardous ? ' ⚠' : ''}
+            {a.name}{a.is_hazardous ? ' [!]' : ''}
           </option>
         ))}
       </select>
 
       {trajectoryLoading && (
-        <span style={{ color: '#888', fontSize: '10px', fontFamily: 'monospace' }}>
+        <span style={{ color: '#a08050', fontSize: '10px', fontFamily: 'monospace' }}>
           Fetching trajectory…
         </span>
       )}
@@ -507,13 +702,16 @@ export default function Scene() {
   }, [selectedAsteroidId]);            // ← asteroidList removed from deps (not needed)
 
   // ── Camera configs ────────────────────────────────────────────────────────
+  // Solar mode: start zoomed in on inner solar system (Earth region focus).
+  // Earth orbit = 100u, Mars = 152u, Jupiter = 520u.
+  // Camera at z=400 shows Mercury→Mars comfortably; user can zoom out to Jupiter+.
   const cameraConfig = mode === 'earth'
     ? { position: [0, EARTH_RADIUS_U * 1.2, EARTH_CAM_DISTANCE], fov: 45, near: 0.1, far: 500_000 }
-    : { position: [0, 600, 1200], fov: 60, near: 0.5, far: 15_000 };
+    : { position: [0, 200, 400], fov: 55, near: 0.5, far: 12_000 };
 
   const controlsConfig = mode === 'earth'
     ? { minDistance: EARTH_RADIUS_U * 1.5, maxDistance: EARTH_RADIUS_U * 20_000, rotateSpeed: 0.45, zoomSpeed: 0.7 }
-    : { minDistance: 8, maxDistance: 8000, rotateSpeed: 0.5, zoomSpeed: 1.2, minPolarAngle: 0, maxPolarAngle: Math.PI / 1.8 };
+    : { minDistance: 8, maxDistance: 6000, rotateSpeed: 0.5, zoomSpeed: 1.0, minPolarAngle: 0, maxPolarAngle: Math.PI / 1.8 };
 
   return (
     <>

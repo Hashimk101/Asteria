@@ -43,7 +43,7 @@ export default function AsteroidSelector({ selectedId, onChange }) {
         </option>
         {asteroids.map(a => (
           <option key={a.spk_id} value={a.spk_id}>
-            {a.name} {a.is_hazardous ? '⚠️' : ''}
+            {a.name} {a.is_hazardous ? '[!]' : ''}
           </option>
         ))}
       </select>

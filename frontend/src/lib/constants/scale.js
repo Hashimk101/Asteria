@@ -28,9 +28,12 @@ export const PLANET_RADII_KM = {
 // Planets need heavy exaggeration to be visible at AU scale
 export const RADIUS_EXAGGERATION = 1500;
 
-// Sun is already huge — use a much smaller multiplier so it
-// doesn't swallow Mercury/Venus orbits (~38–72 units away)
-export const SUN_RADIUS_EXAGGERATION = 70;
+// Sun exaggeration tuned to keep ALL inner planets outside.
+// 695,700 × 6.685e-7 × 45 ≈ 20.9 units.
+// Mercury orbit center = 38.7u, Mercury visual radius ≈ 3.2u
+// → Mercury near-side = 35.5u — safely outside Sun surface (20.9u). ✅
+// Outer planets are capped in Scene.jsx so Sun remains the largest body.
+export const SUN_RADIUS_EXAGGERATION = 45;
 
 export const PLANET_VISUAL_RADII = Object.fromEntries(
   Object.entries(PLANET_RADII_KM)
@@ -42,7 +45,7 @@ export const PLANET_VISUAL_RADII = Object.fromEntries(
 );
 
 // Sun computed separately with its own exaggeration
-// 695,700 × 6.685e-7 × 80 ≈ 37 units — fits inside Mercury orbit (38.7 units)
+// 695,700 × 6.685e-7 × 45 ≈ 20.9 units — inside Mercury orbit, outside all inner planets
 export const SUN_VISUAL_RADIUS = PLANET_RADII_KM.Sun * KM_TO_UNITS * SUN_RADIUS_EXAGGERATION;
 
 export const EARTH_RADIUS_U     = PLANET_VISUAL_RADII.Earth;

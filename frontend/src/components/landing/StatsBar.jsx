@@ -90,7 +90,7 @@ export default function StatsBar() {
 
       {isError && (
         <p style={{ textAlign: "center", fontSize: "9px", color: "rgba(196,140,64,0.4)", paddingBottom: "4px", letterSpacing: "0.2em" }}>
-          ⚠ LIVE DATA UNAVAILABLE
+          [!] LIVE DATA UNAVAILABLE
         </p>
       )}
     </div>
