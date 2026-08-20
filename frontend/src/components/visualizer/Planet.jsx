@@ -49,6 +49,22 @@ function EarthAtmosphere({ radius }) {
   );
 }
 
+function EarthHalo({ radius }) {
+  return (
+    <mesh>
+      <sphereGeometry args={[radius * 1.09, 64, 64]} />
+      <meshStandardMaterial
+        color="#1a3a8a"
+        transparent
+        opacity={0.05}
+        side={THREE.BackSide}
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+      />
+    </mesh>
+  );
+}
+
 function PlanetHaze({ color, radius }) {
   return (
     <mesh>
@@ -103,15 +119,20 @@ function PlanetMesh({ name, radius, config, onLoaded }) {
   return (
     <>
       <mesh ref={meshRef}>
-        <sphereGeometry args={[radius, name === 'Earth' ? 64 : 32, name === 'Earth' ? 64 : 32]} />
+        <sphereGeometry args={[radius, name === 'Earth' ? 128 : 32, name === 'Earth' ? 128 : 32]} />
         <meshStandardMaterial
           map={colorMap}
-          roughness={config.roughness  ?? 0.8}
-          metalness={config.metalness  ?? 0.05}
+          roughness={name === 'Earth' ? 0.78 : (config.roughness ?? 0.8)}
+          metalness={name === 'Earth' ? 0.02 : (config.metalness ?? 0.05)}
         />
       </mesh>
 
-      {name === 'Earth'  && <EarthAtmosphere radius={radius} />}
+      {name === 'Earth' && (
+        <>
+          <EarthAtmosphere radius={radius} />
+          <EarthHalo radius={radius} />
+        </>
+      )}
       {name !== 'Earth'  && <PlanetHaze radius={radius} color={HAZE_COLORS[name] ?? '#ffffff'} />}
       {name === 'Saturn' && <SaturnRings radius={radius} />}
     </>

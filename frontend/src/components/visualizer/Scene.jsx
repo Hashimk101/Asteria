@@ -523,8 +523,10 @@ function LocateAsteroidButton({ vectors, cameraRef, controlRef, earthMode, earth
 function SolarSystemContent({ apiPlanets, asteroidVectors, asteroidHazardous, asteroidMeta }) {
   return (
     <>
-      <ambientLight intensity={0.35} color="#1a1a4a" />
-      <hemisphereLight skyColor="#ffe8c0" groundColor="#1a2a4a" intensity={0.45} />
+      <ambientLight intensity={0.4} color="#c8d8ff" />
+      <hemisphereLight skyColor="#ffffff" groundColor="#0c1525" intensity={0.45} />
+      <directionalLight position={[100, 80, 100]} intensity={2.2} color="#fff8e8" />
+      <directionalLight position={[-100, -50, -100]} intensity={0.3} color="#2040c0" />
       <MilkyWay />
       <Sun />
 
@@ -750,7 +752,7 @@ export default function Scene() {
           alpha:                  false,
           powerPreference:        'high-performance',
           toneMapping:            3,
-          toneMappingExposure:    mode === 'solar' ? 0.85 : 1.1,
+          toneMappingExposure:    mode === 'solar' ? 1.05 : 1.1,
           logarithmicDepthBuffer: true,
         }}
         onCreated={({ gl, camera }) => {

@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, useCallback } from 'react';
 import { useFrame }                                from '@react-three/fiber';
 import { Html }                                    from '@react-three/drei';
 import * as THREE                                  from 'three';
-import { KM_TO_UNITS, AU_TO_UNITS }                from '../../lib/constants/scale.js';
+import { KM_TO_UNITS }                             from '../../lib/constants/scale.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function toVec3(v) {
@@ -12,17 +12,17 @@ function toVec3(v) {
     v.y_km * KM_TO_UNITS,
   );
 }
-// ─── At the top, add this helper ──────────────────────────────────────────────
+
 function AsteroidTrail({ pts, color }) {
   const geometry = useMemo(() => {
     if (pts.length < 2) return null;
     const curve = new THREE.CatmullRomCurve3(pts);
     return new THREE.TubeGeometry(
-      curve,   // path
-      pts.length * 2,  // tubular segments — more = smoother
-      0.4,     // ← THICKNESS — increase this to make it fatter (try 0.4–1.5)
-      6,       // radial segments — 6 is fine for a thin tube
-      false    // closed
+      curve,           // path
+      pts.length * 2,  // tubular segments
+      0.38,            // thickness
+      8,               // radial segments
+      false            // closed
     );
   }, [pts]);
 
@@ -33,7 +33,7 @@ function AsteroidTrail({ pts, color }) {
       <meshBasicMaterial
         color={color}
         transparent
-        opacity={0.65}
+        opacity={0.75}
         depthWrite={false}
       />
     </mesh>
@@ -101,13 +101,11 @@ function useAsteroidTexture() {
 }
 
 // ─── Irregular asteroid geometry ─────────────────────────────────────────────
-// Distorts a sphere's vertices with seeded noise to look like a potato rock
 function useIrregularGeometry(radius) {
   return useMemo(() => {
     const geo  = new THREE.SphereGeometry(radius, 32, 32);
     const pos  = geo.attributes.position;
 
-    // Seeded pseudo-random for reproducibility
     let seed = 7;
     const rand = () => {
       seed = (seed * 16807) % 2147483647;
@@ -119,12 +117,9 @@ function useIrregularGeometry(radius) {
       const y = pos.getY(i);
       const z = pos.getZ(i);
 
-      // Large-scale axis squash — makes it look elongated like a real asteroid
       const squashX = 1.0 + (rand() - 0.5) * 0.55;
       const squashY = 1.0 + (rand() - 0.5) * 0.40;
       const squashZ = 1.0 + (rand() - 0.5) * 0.45;
-
-      // Fine surface noise
       const noise = 1.0 + (rand() - 0.5) * 0.28;
 
       pos.setXYZ(i, x * squashX * noise, y * squashY * noise, z * squashZ * noise);
@@ -133,57 +128,6 @@ function useIrregularGeometry(radius) {
     geo.computeVertexNormals();
     return geo;
   }, [radius]);
-}
-
-// ─── Full orbital ellipse from Keplerian elements ─────────────────────────────
-// Draws the complete predicted orbit so the short trajectory arc makes sense
-function OrbitalEllipse({ meta, color }) {
-  const geometry = useMemo(() => {
-    const a = meta?.semi_major_axis_au;
-    const e = meta?.eccentricity;
-    const i = meta?.inclination_degrees;
-    const Ω = meta?.longitude_of_ascending_node_degrees;
-    const ω = meta?.argument_of_perihelion_degrees;
-
-    if (a == null || e == null) return null;
-
-    const sma  = a * AU_TO_UNITS;                    // semi-major axis in scene units
-    const smb  = sma * Math.sqrt(1 - e * e);         // semi-minor axis
-    const c    = sma * e;                             // focus offset
-
-    // Convert degrees → radians
-    const iR = (i  ?? 0) * Math.PI / 180;
-    const ΩR = (Ω  ?? 0) * Math.PI / 180;
-    const ωR = (ω  ?? 0) * Math.PI / 180;
-
-    // Build rotation matrix from orbital elements
-    // Order: argument of perihelion → inclination → longitude of ascending node
-    const mω = new THREE.Matrix4().makeRotationY(-ωR);
-    const mI = new THREE.Matrix4().makeRotationX(-iR);
-    const mΩ = new THREE.Matrix4().makeRotationY(-ΩR);
-    const rot = new THREE.Matrix4().multiplyMatrices(mΩ, new THREE.Matrix4().multiplyMatrices(mI, mω));
-
-    const pts = [];
-    const N   = 256;
-    for (let k = 0; k <= N; k++) {
-      const θ = (k / N) * Math.PI * 2;
-      // Ellipse in orbital plane (x = along perihelion, y = 0, z = up in orbital plane)
-      const px = sma * Math.cos(θ) - c;
-      const pz = smb * Math.sin(θ);
-      const v  = new THREE.Vector3(px, 0, pz).applyMatrix4(rot);
-      pts.push(v);
-    }
-
-    return new THREE.BufferGeometry().setFromPoints(pts);
-  }, [meta]);
-
-  if (!geometry) return null;
-
-  return (
-    <line geometry={geometry}>
-      <lineBasicMaterial color={color} transparent opacity={0.18} />
-    </line>
-  );
 }
 
 // ─── Detail Panel ─────────────────────────────────────────────────────────────
@@ -290,7 +234,7 @@ function Row({ label, value, color }) {
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
 export default function AsteroidPath({ vectors, isHazardous, asteroidMeta }) {
-  const bodyRef        = useRef();       // single ref on the group — glow is a child
+  const bodyRef        = useRef();
   const [selected,     setSelected]     = useState(false);
   const [dotPos,       setDotPos]       = useState(null);
   const [startHovered, setStartHovered] = useState(false);
@@ -299,7 +243,6 @@ export default function AsteroidPath({ vectors, isHazardous, asteroidMeta }) {
   const color   = isHazardous ? '#ff4444' : '#44aaff';
   const texture = useAsteroidTexture();
 
-  // Accurate radius from API metres, with visible minimum
   const asteroidRadius = useMemo(() => {
     const minM = asteroidMeta?.estimated_diameter_min_m;
     const maxM = asteroidMeta?.estimated_diameter_max_m;
@@ -320,7 +263,6 @@ export default function AsteroidPath({ vectors, isHazardous, asteroidMeta }) {
     return { pts: p, lineArray: flat };
   }, [vectors]);
 
-  // Animate body group — glow is a child so it moves for free
   useFrame(() => {
     if (!pts.length || !bodyRef.current) return;
     const pos = interpolatePosition(vectors, pts, Date.now());
@@ -348,13 +290,9 @@ export default function AsteroidPath({ vectors, isHazardous, asteroidMeta }) {
 
   return (
     <group>
-
-      {/* Full predicted orbital ellipse — context for the short arc */}
-      <OrbitalEllipse meta={asteroidMeta} color={color} />
-
       <AsteroidTrail pts={pts} color={color} />
 
-      {/* ── Start Marker (Hover to view tag) ──────────────────────── */}
+      {/* ── Start Marker ──────────────────────────────────────────── */}
       {pts.length > 0 && (
         <group
           position={pts[0]}
@@ -395,7 +333,7 @@ export default function AsteroidPath({ vectors, isHazardous, asteroidMeta }) {
         </group>
       )}
 
-      {/* ── End Marker (Hover to view tag) ────────────────────────── */}
+      {/* ── End Marker ────────────────────────────────────────────── */}
       {pts.length > 1 && (
         <group
           position={pts[pts.length - 1]}
@@ -436,22 +374,20 @@ export default function AsteroidPath({ vectors, isHazardous, asteroidMeta }) {
         </group>
       )}
 
-      {/* Asteroid body group — glow is a child, moves together */}
+      {/* Asteroid body group */}
       <group ref={bodyRef} onClick={handleClick}>
-        {/* Irregular rocky body */}
         <mesh geometry={irregularGeo}>
           <meshStandardMaterial
             map={texture}
-            roughness={0.92}
-            metalness={0.08}
+            roughness={0.88}
+            metalness={0.12}
             color={isHazardous ? '#ff9988' : '#b0a898'}
           />
         </mesh>
 
-        {/* Glow — child of body group, always co-located */}
         <mesh>
           <sphereGeometry args={[asteroidRadius * 2.8, 12, 12]} />
-          <meshBasicMaterial color={color} transparent opacity={0.07} depthWrite={false} />
+          <meshBasicMaterial color={color} transparent opacity={0.09} depthWrite={false} />
         </mesh>
       </group>
 
@@ -474,3 +410,4 @@ export default function AsteroidPath({ vectors, isHazardous, asteroidMeta }) {
     </group>
   );
 }
+
