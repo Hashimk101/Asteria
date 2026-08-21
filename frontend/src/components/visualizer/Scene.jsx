@@ -8,6 +8,7 @@ import MilkyWay                                                         from "./
 import LoadingScreen                                                    from "./LoadingScreen";
 import AsteroidPath                                                     from "../scene/AsteroidPath";
 import EarthAsteroidPath                                                from "../scene/EarthAsteroidPath";
+import ImpactPhysicsPanel                                              from "../ui/ImpactPhysicsPanel";
 import * as THREE                                                       from "three";
 import {
   EARTH_RADIUS_U,
@@ -520,7 +521,7 @@ function LocateAsteroidButton({ vectors, cameraRef, controlRef, earthMode, earth
 }
 
 // ─── Solar System Scene ───────────────────────────────────────────────────────
-function SolarSystemContent({ apiPlanets, asteroidVectors, asteroidHazardous, asteroidMeta }) {
+function SolarSystemContent({ apiPlanets, asteroidVectors, asteroidHazardous, asteroidMeta, onImpactClick }) {
   return (
     <>
       <ambientLight intensity={0.4} color="#c8d8ff" />
@@ -543,6 +544,7 @@ function SolarSystemContent({ apiPlanets, asteroidVectors, asteroidHazardous, as
           vectors={asteroidVectors}
           isHazardous={asteroidHazardous}
           asteroidMeta={asteroidMeta}
+          onImpactClick={onImpactClick}
         />
       )}
     </>
@@ -550,7 +552,7 @@ function SolarSystemContent({ apiPlanets, asteroidVectors, asteroidHazardous, as
 }
 
 // ─── Earth Close-Up Scene ─────────────────────────────────────────────────────
-function EarthContent({ onEarthLoaded, asteroidVectors, asteroidMeta, asteroidHazardous, earthPos }) {
+function EarthContent({ onEarthLoaded, asteroidVectors, asteroidMeta, asteroidHazardous, earthPos, onImpactClick }) {
   return (
     <>
       <ambientLight intensity={0.35} color="#c8d8ff" />
@@ -567,6 +569,7 @@ function EarthContent({ onEarthLoaded, asteroidVectors, asteroidMeta, asteroidHa
           isHazardous={asteroidHazardous}
           asteroidMeta={asteroidMeta}
           earthPosKm={earthPos}
+          onImpactClick={onImpactClick}
         />
       )}
     </>
@@ -618,7 +621,7 @@ export default function Scene() {
   const [earthReady,          setEarthReady]         = useState(false);
   const [mode,                setMode]               = useState('earth');
   const [apiPlanets,          setApiPlanets]         = useState({});
-  const [earthPos,            setEarthPos]           = useState(null); // heliocentric km
+  const [earthPos,            setEarthPos]           = useState(null);
   const [asteroidList,        setAsteroidList]       = useState([]);
   const [asteroidListLoading, setAsteroidListLoading]= useState(false);
   const [selectedAsteroidId,  setSelectedAsteroidId] = useState(null);
@@ -626,6 +629,7 @@ export default function Scene() {
   const [asteroidMeta,        setAsteroidMeta]       = useState(null);
   const [asteroidHazardous,   setAsteroidHazardous]  = useState(false);
   const [trajectoryLoading,   setTrajectoryLoading]  = useState(false);
+  const [impactPanelOpen,     setImpactPanelOpen]    = useState(false);
 
   // ── Imperative refs for camera control from outside Canvas ────────────────
   const cameraRef  = useRef(null);
@@ -734,6 +738,15 @@ export default function Scene() {
         mode={mode}
       />
 
+      {/* Impact physics panel — DOM overlay, outside Canvas */}
+      {impactPanelOpen && asteroidMeta && (
+        <ImpactPhysicsPanel
+          meta={asteroidMeta}
+          isHazardous={asteroidHazardous}
+          onClose={() => setImpactPanelOpen(false)}
+        />
+      )}
+
       {/* Locate button — outside Canvas, uses imperative cameraRef/controlRef */}
       <LocateAsteroidButton
         vectors={asteroidVectors}
@@ -767,12 +780,14 @@ export default function Scene() {
               asteroidMeta={asteroidMeta}
               asteroidHazardous={asteroidHazardous}
               earthPos={earthPos}
+              onImpactClick={() => setImpactPanelOpen(true)}
             />
           : <SolarSystemContent
               apiPlanets={apiPlanets}
               asteroidVectors={asteroidVectors}
               asteroidHazardous={asteroidHazardous}
               asteroidMeta={asteroidMeta}
+              onImpactClick={() => setImpactPanelOpen(true)}
             />
         }
 

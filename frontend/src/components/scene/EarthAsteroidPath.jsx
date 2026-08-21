@@ -249,7 +249,7 @@ function EarthInfoPanel({ meta, isHazardous, onClose, currentPos }) {
 }
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
-export default function EarthAsteroidPath({ vectors, isHazardous, asteroidMeta, earthPosKm }) {
+export default function EarthAsteroidPath({ vectors, isHazardous, asteroidMeta, earthPosKm, onImpactClick }) {
   const bodyRef = useRef();
   const posRef = useRef(null);
   const [selected, setSelected] = useState(false);
@@ -288,9 +288,10 @@ export default function EarthAsteroidPath({ vectors, isHazardous, asteroidMeta, 
 
   const handleClick = useCallback((e) => {
     e.stopPropagation();
-    if (posRef.current) setPanelPos(posRef.current.clone()); // snapshot on click only
+    if (posRef.current) setPanelPos(posRef.current.clone());
     setSelected(s => !s);
-  }, []);
+    if (onImpactClick) onImpactClick();
+  }, [onImpactClick]);
 
   const startDateStr = useMemo(() => {
     if (!vectors[0]?.datetime) return null;

@@ -233,7 +233,7 @@ function Row({ label, value, color }) {
 }
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
-export default function AsteroidPath({ vectors, isHazardous, asteroidMeta }) {
+export default function AsteroidPath({ vectors, isHazardous, asteroidMeta, onImpactClick }) {
   const bodyRef        = useRef();
   const [selected,     setSelected]     = useState(false);
   const [dotPos,       setDotPos]       = useState(null);
@@ -274,7 +274,8 @@ export default function AsteroidPath({ vectors, isHazardous, asteroidMeta }) {
   const handleClick = useCallback((e) => {
     e.stopPropagation();
     setSelected(s => !s);
-  }, []);
+    if (onImpactClick) onImpactClick();
+  }, [onImpactClick]);
 
   const startDateStr = useMemo(() => {
     if (!vectors[0]?.datetime) return null;
